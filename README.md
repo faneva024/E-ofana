@@ -19,8 +19,6 @@ Projet Mini-soutenance
 
 * Version recommandée : Maven 4.1.0
 
-
-
 ## Lancement de l'application
 
 ### Via Maven
