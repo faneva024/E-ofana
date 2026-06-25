@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: e-ofana-postgres
+    restart: always
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - e_ofana_postgres_data:/var/lib/postgresql/data
+    networks:
+      - e-ofana-network
+
+  backend:
+    container_name: e-ofana-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${BACKEND_PORT}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      EMAIL_SERVICE_URL: http://service-email:3001
+      SMS_SERVICE_URL: http://service-sms:3002
+      MOBILE_MONEY_SERVICE_URL: http://service-mobile-money:3003
+    depends_on:
+      - postgres
+      - service-email
+      - service-sms
+      - service-mobile-money
+    networks:
+      - e-ofana-network
+
+  frontend:
+    container_name: e-ofana-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${FRONTEND_PORT}:5173"
+    environment:
+      VITE_API_URL: http://localhost:${BACKEND_PORT}
+    depends_on:
+      - backend
+    networks:
+      - e-ofana-network
+
+  service-email:
+    container_name: e-ofana-service-email
+    build:
+      context: ./services/service-email
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${EMAIL_SERVICE_PORT}:3001"
+    environment:
+      EMAIL_SERVICE_PORT: ${EMAIL_SERVICE_PORT}
+      EMAIL_MODE: ${EMAIL_MODE}
+    networks:
+      - e-ofana-network
+
+  service-sms:
+    container_name: e-ofana-service-sms
+    build:
+      context: ./services/service-sms
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${SMS_SERVICE_PORT}:3002"
+    environment:
+      SMS_SERVICE_PORT: ${SMS_SERVICE_PORT}
+      SMS_MODE: ${SMS_MODE}
+    networks:
+      - e-ofana-network
+
+  service-mobile-money:
+    container_name: e-ofana-service-mobile-money
+    build:
+      context: ./services/service-mobile-money
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${MOBILE_MONEY_SERVICE_PORT}:3003"
+    environment:
+      MOBILE_MONEY_SERVICE_PORT: ${MOBILE_MONEY_SERVICE_PORT}
+      MOBILE_MONEY_MODE: ${MOBILE_MONEY_MODE}
+    networks:
+      - e-ofana-network
+
+volumes:
+  e_ofana_postgres_data:
+
+networks:
+  e-ofana-network:
+    driver: bridge
