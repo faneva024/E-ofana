@@ -5,9 +5,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HomeController {
-
     @GetMapping("/")
     public String home() {
-        return "Application Spring Boot démarrée avec succès !";
+        return "Mande ny back nay , teste ftsn ty fa afaka fafana ny HomeController.java  avieo a.";
     }
 }
