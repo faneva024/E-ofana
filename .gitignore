@@ -1,0 +1,9 @@
+# Backend
+target/
+.env
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env

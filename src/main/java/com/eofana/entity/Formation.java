@@ -11,17 +11,16 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "\"formations\"")
-@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -72,8 +71,9 @@ public class Formation {
     private Long prixRemise;
 
     @NotNull(message = "Le statut est obligatoire")
-    @Enumerated(EnumType.STRING) // AJOUT: Spécifie que c'est un Enum
-    @Column(name = "\"statut\"", nullable = false, columnDefinition = "VARCHAR(50)") // AJOUT: Force le type SQL
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"statut\"", nullable = false, columnDefinition = "\"statutFormation\"")
     @Builder.Default
     private StatutFormation statut = StatutFormation.brouillon;
 
@@ -95,11 +95,25 @@ public class Formation {
     @Builder.Default
     private Integer nbAvis = 0;
 
-    @CreatedDate
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @LastModifiedDate
     @Column(name = "\"updatedAt\"", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
+
+        if (this.updatedAt == null) {
+            this.updatedAt = OffsetDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

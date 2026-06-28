@@ -12,16 +12,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "\"utilisateurs\"")
-@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -60,8 +59,9 @@ public class Utilisateur {
     private String motDePasse;
 
     @NotNull(message = "Le rôle est obligatoire")
-    @Enumerated(EnumType.STRING) // AJOUT: Spécifie que c'est un Enum
-    @Column(name = "\"role\"", nullable = false, columnDefinition = "VARCHAR(50)") // AJOUT
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"role\"", nullable = false, columnDefinition = "\"roleUtilisateur\"")
     @Builder.Default
     private RoleUtilisateur role = RoleUtilisateur.apprenant;
 
@@ -77,11 +77,29 @@ public class Utilisateur {
     @Builder.Default
     private Boolean estActif = true;
 
-    @CreatedDate
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @LastModifiedDate
     @Column(name = "\"updatedAt\"", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.uuid == null) {
+            this.uuid = UUID.randomUUID();
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
+
+        if (this.updatedAt == null) {
+            this.updatedAt = OffsetDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

@@ -13,17 +13,19 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "\"centres\"")
-@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -83,12 +85,14 @@ public class Centre {
     @Column(name = "\"siteWeb\"", length = 255)
     private String siteWeb;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "\"reseauxSociaux\"", columnDefinition = "jsonb")
     private String reseauxSociaux;
 
     @NotNull
-    @Enumerated(EnumType.STRING) // Gardez ceci (c'est un Enum)
-    @Column(name = "\"abonnement\"", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"abonnement\"", nullable = false, columnDefinition = "\"abonnementType\"")
     @Builder.Default
     private AbonnementType abonnement = AbonnementType.basic;
 
@@ -99,13 +103,15 @@ public class Centre {
     private BigDecimal tauxCommission = new BigDecimal("7.00");
 
     @NotNull
-    @Enumerated(EnumType.STRING) // Gardez ceci
-    @Column(name = "\"frequenceReversement\"", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"frequenceReversement\"", nullable = false, columnDefinition = "\"frequenceReversement\"")
     @Builder.Default
     private FrequenceReversement frequenceReversement = FrequenceReversement.mensuel;
 
-    @Enumerated(EnumType.STRING) // Gardez ceci
-    @Column(name = "\"mobileMoneyOperateur\"")
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"mobileMoneyOperateur\"", columnDefinition = "\"operateurMM\"")
     private OperateurMm mobileMoneyOperateur;
 
     @Size(max = 20)
@@ -113,8 +119,9 @@ public class Centre {
     private String mobileMoneyNumero;
 
     @NotNull
-    @Enumerated(EnumType.STRING) // Gardez ceci
-    @Column(name = "\"statut\"", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "\"statut\"", nullable = false, columnDefinition = "\"statutCentre\"")
     @Builder.Default
     private StatutCentre statut = StatutCentre.enAttente;
 
@@ -124,12 +131,25 @@ public class Centre {
 
     @Column(name = "\"validatedAt\"")
     private LocalDateTime validatedAt;
-
-    @CreatedDate
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @LastModifiedDate
     @Column(name = "\"updatedAt\"", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
+
+        if (this.updatedAt == null) {
+            this.updatedAt = OffsetDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
 }
