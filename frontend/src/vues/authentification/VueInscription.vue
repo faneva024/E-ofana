@@ -13,20 +13,24 @@
     <div class="inscription-form-wrapper">
       <div class="form-card">
         <h2 class="form-title">Inscription</h2>
-        
-        <div v-if="authStore.error" class="alert alert-danger" role="alert">
+
+        <div v-if="erreur" class="alert alert-danger" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          {{ authStore.error }}
+          {{ erreur }}
+        </div>
+
+        <div v-if="success" class="alert alert-success" role="alert">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          {{ success }}
         </div>
 
         <form @submit.prevent="handleSubmit" novalidate>
-          <!-- Informations personnelles -->
           <div class="form-section">
             <h3 class="section-title">
               <i class="bi bi-person-fill me-2"></i>
               Informations personnelles
             </h3>
-            
+
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="nom" class="form-label">Nom *</label>
@@ -114,7 +118,6 @@
             </div>
           </div>
 
-          <!-- Mot de passe -->
           <div class="form-section">
             <h3 class="section-title">
               <i class="bi bi-shield-lock-fill me-2"></i>
@@ -147,6 +150,7 @@
                   {{ errors.password }}
                 </div>
               </div>
+
               <div class="password-strength mt-2">
                 <div class="progress" style="height: 5px;">
                   <div
@@ -160,7 +164,9 @@
             </div>
 
             <div class="mb-3">
-              <label for="passwordConfirm" class="form-label">Confirmer le mot de passe *</label>
+              <label for="passwordConfirm" class="form-label">
+                Confirmer le mot de passe *
+              </label>
               <div class="input-group">
                 <span class="input-group-text">
                   <i class="bi bi-key-fill"></i>
@@ -188,7 +194,6 @@
             </div>
           </div>
 
-          <!-- Conditions -->
           <div class="form-section">
             <div class="form-check mb-3">
               <input
@@ -200,8 +205,11 @@
                 @change="validateField('conditions')"
               />
               <label class="form-check-label" for="conditions">
-                J'accepte les <a href="#" class="link-primary">conditions d'utilisation</a> et la 
-                <a href="#" class="link-primary">politique de confidentialité</a> *
+                J'accepte les
+                <a href="#" class="link-primary">conditions d'utilisation</a>
+                et la
+                <a href="#" class="link-primary">politique de confidentialité</a>
+                *
               </label>
               <div class="invalid-feedback d-block" v-if="errors.conditions">
                 {{ errors.conditions }}
@@ -213,18 +221,21 @@
             <button
               type="submit"
               class="btn btn-primary btn-lg w-100"
-              :disabled="authStore.loading"
+              :disabled="loading"
             >
-              <span v-if="authStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               <i v-else class="bi bi-person-plus-fill me-2"></i>
-              {{ authStore.loading ? 'Inscription en cours...' : 'S\'inscrire' }}
+              {{ loading ? "Inscription en cours..." : "S'inscrire" }}
             </button>
           </div>
 
           <div class="form-footer">
             <p class="text-center mb-0">
-              Déjà inscrit ? 
-              <router-link to="/connexion" class="link-primary fw-bold">
+              Déjà inscrit ?
+              <router-link
+                :to="{ path: '/connexion', query: { formationId: route.query.formationId } }"
+                class="link-primary fw-bold"
+              >
                 Connectez-vous
               </router-link>
             </p>
@@ -236,115 +247,182 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/authStore'
+import { ref, reactive, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { creerUtilisateur } from "../../api/utilisateurs.js";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const route = useRoute();
 
 const form = reactive({
-  nom: '',
-  prenom: '',
-  email: '',
-  telephone: '',
-  password: '',
-  passwordConfirm: '',
-  conditions: false
-})
+  nom: "",
+  prenom: "",
+  email: "",
+  telephone: "",
+  password: "",
+  passwordConfirm: "",
+  conditions: false,
+});
 
-const errors = reactive({})
-const showPassword = ref(false)
-const showPasswordConfirm = ref(false)
+const errors = reactive({});
+const showPassword = ref(false);
+const showPasswordConfirm = ref(false);
+const loading = ref(false);
+const erreur = ref("");
+const success = ref("");
 
 const passwordStrength = computed(() => {
-  const password = form.password
-  let strength = 0
-  
-  if (password.length >= 8) strength += 25
-  if (password.match(/[a-z]/)) strength += 25
-  if (password.match(/[A-Z]/)) strength += 25
-  if (password.match(/[0-9]/) || password.match(/[^a-zA-Z0-9]/)) strength += 25
-  
-  return strength
-})
+  const password = form.password;
+  let strength = 0;
+
+  if (password.length >= 8) strength += 25;
+  if (password.match(/[a-z]/)) strength += 25;
+  if (password.match(/[A-Z]/)) strength += 25;
+  if (password.match(/[0-9]/) || password.match(/[^a-zA-Z0-9]/)) strength += 25;
+
+  return strength;
+});
 
 const passwordStrengthClass = computed(() => {
-  const strength = passwordStrength.value
-  if (strength <= 25) return 'bg-danger'
-  if (strength <= 50) return 'bg-warning'
-  if (strength <= 75) return 'bg-info'
-  return 'bg-success'
-})
+  const strength = passwordStrength.value;
+
+  if (strength <= 25) return "bg-danger";
+  if (strength <= 50) return "bg-warning";
+  if (strength <= 75) return "bg-info";
+
+  return "bg-success";
+});
 
 const passwordStrengthText = computed(() => {
-  const strength = passwordStrength.value
-  if (strength <= 25) return 'Très faible'
-  if (strength <= 50) return 'Faible'
-  if (strength <= 75) return 'Moyen'
-  return 'Fort'
-})
+  const strength = passwordStrength.value;
+
+  if (strength <= 25) return "Très faible";
+  if (strength <= 50) return "Faible";
+  if (strength <= 75) return "Moyen";
+
+  return "Fort";
+});
 
 const validateField = (field) => {
   switch (field) {
-    case 'nom':
-      errors.nom = form.nom.trim() ? '' : 'Le nom est requis'
-      break
-    case 'prenom':
-      errors.prenom = form.prenom.trim() ? '' : 'Le prénom est requis'
-      break
-    case 'email':
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      errors.email = emailRegex.test(form.email) ? '' : 'Email invalide'
-      break
-    case 'telephone':
+    case "nom":
+      errors.nom = form.nom.trim() ? "" : "Le nom est requis";
+      break;
+
+    case "prenom":
+      errors.prenom = form.prenom.trim() ? "" : "Le prénom est requis";
+      break;
+
+    case "email": {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      errors.email = emailRegex.test(form.email) ? "" : "Email invalide";
+      break;
+    }
+
+    case "telephone":
       if (form.telephone) {
-        const phoneRegex = /^\+?[\d\s-]{10,}$/
-        errors.telephone = phoneRegex.test(form.telephone) ? '' : 'Numéro de téléphone invalide'
+        const phoneRegex = /^\+?[\d\s-]{10,}$/;
+        errors.telephone = phoneRegex.test(form.telephone)
+          ? ""
+          : "Numéro de téléphone invalide";
       } else {
-        errors.telephone = ''
+        errors.telephone = "";
       }
-      break
-    case 'password':
+      break;
+
+    case "password":
       if (form.password.length < 8) {
-        errors.password = 'Le mot de passe doit contenir au moins 8 caractères'
+        errors.password = "Le mot de passe doit contenir au moins 8 caractères";
       } else {
-        errors.password = ''
+        errors.password = "";
       }
+
       if (form.passwordConfirm) {
-        validateField('passwordConfirm')
+        validateField("passwordConfirm");
       }
-      break
-    case 'passwordConfirm':
-      errors.passwordConfirm = form.password === form.passwordConfirm ? '' : 'Les mots de passe ne correspondent pas'
-      break
-    case 'conditions':
-      errors.conditions = form.conditions ? '' : 'Vous devez accepter les conditions'
-      break
+      break;
+
+    case "passwordConfirm":
+      errors.passwordConfirm =
+        form.password === form.passwordConfirm
+          ? ""
+          : "Les mots de passe ne correspondent pas";
+      break;
+
+    case "conditions":
+      errors.conditions = form.conditions
+        ? ""
+        : "Vous devez accepter les conditions";
+      break;
+
+    default:
+      break;
   }
-}
+};
 
 const validateForm = () => {
-  Object.keys(form).forEach(key => {
-    if (key !== 'telephone') {
-      validateField(key)
-    }
-  })
-  
-  return !Object.values(errors).some(error => error)
-}
+  validateField("nom");
+  validateField("prenom");
+  validateField("email");
+  validateField("telephone");
+  validateField("password");
+  validateField("passwordConfirm");
+  validateField("conditions");
+
+  return !Object.values(errors).some((error) => error);
+};
+
+const resetForm = () => {
+  form.nom = "";
+  form.prenom = "";
+  form.email = "";
+  form.telephone = "";
+  form.password = "";
+  form.passwordConfirm = "";
+  form.conditions = false;
+};
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
-  
-  const { passwordConfirm, conditions, ...userData } = form
-  
-  const result = await authStore.register(userData)
-  
-  if (result.success) {
-    router.push({ name: 'MonEspace' })
+  if (!validateForm()) return;
+
+  loading.value = true;
+  erreur.value = "";
+  success.value = "";
+
+  try {
+    const userData = {
+      nom: form.nom,
+      prenom: form.prenom,
+      email: form.email,
+      telephone: form.telephone,
+      motDePasse: form.password,
+    };
+
+    await creerUtilisateur(userData);
+
+    success.value = "Compte créé avec succès.";
+    resetForm();
+
+    setTimeout(() => {
+      router.push({
+        path: "/connexion",
+        query: {
+          formationId: route.query.formationId,
+        },
+      });
+    }, 800);
+  } catch (e) {
+    console.error("Erreur création utilisateur :", e);
+
+    if (e.response && e.response.data && e.response.data.message) {
+      erreur.value = e.response.data.message;
+    } else {
+      erreur.value = "Impossible de créer le compte. Vérifiez les informations.";
+    }
+  } finally {
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
@@ -501,15 +579,21 @@ const handleSubmit = async () => {
   color: var(--eo-danger);
 }
 
+.alert-success {
+  background-color: #d1e7dd;
+  border-color: #badbcc;
+  color: #0f5132;
+}
+
 @media (max-width: 768px) {
   .form-card {
     padding: var(--eo-spacing-lg);
   }
-  
+
   .eo-title {
     font-size: var(--eo-font-size-3xl);
   }
-  
+
   .inscription-form-wrapper {
     padding: var(--eo-spacing-lg) var(--eo-spacing-sm);
   }

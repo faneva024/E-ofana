@@ -1,9 +1,13 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
+export const getFormations = () => {
+  return api.get("/formations");
+};
 
-export const mockFormations = [];
+export const getFormationById = (id) => {
+  return api.get(`/formations/${id}`);
+};
 
-export function getFormations() {
-  return axios.get(`${API_URL}/formations`);
-}
+export const createFormation = (data) => {
+  return api.post("/formations", data);
+};

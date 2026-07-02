@@ -8,6 +8,7 @@ import VueConnexion from '../vues/authentification/VueConnexion.vue'
 import MonEspace from '../vues/MonEspace.vue'
 import VueAccueil from '../vues/apprenant/VueAccueil.vue'
 import VueMonEspace from '../vues/apprenant/VueMonEspace.vue'
+import DetailFormation from "../pages/DetailFormation.vue";
 
 const routes = [
   {
@@ -33,6 +34,11 @@ const routes = [
         path: 'formations',
         name: 'Formations',
         component: RechercheFormations
+      },
+      {
+        path: 'formations/:id',
+        name: 'DetailFormation',
+        component: DetailFormation
       },
       {
         path: 'inscription',

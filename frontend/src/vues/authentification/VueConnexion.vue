@@ -118,50 +118,98 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/authStore'
+import { ref, reactive } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { connexion } from "../../api/auth";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const route = useRoute();
 
 const form = reactive({
-  email: '',
-  password: '',
-  rememberMe: false
-})
+  email: "",
+  password: "",
+  rememberMe: false,
+});
 
-const errors = reactive({})
-const showPassword = ref(false)
+const errors = reactive({});
+const showPassword = ref(false);
+const loading = ref(false);
+const erreur = ref("");
+const success = ref("");
 
 const validateField = (field) => {
   switch (field) {
-    case 'email':
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      errors.email = emailRegex.test(form.email) ? '' : 'Email invalide'
-      break
-    case 'password':
-      errors.password = form.password ? '' : 'Le mot de passe est requis'
-      break
+    case "email": {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      errors.email = emailRegex.test(form.email) ? "" : "Email invalide";
+      break;
+    }
+
+    case "password":
+      errors.password = form.password ? "" : "Le mot de passe est requis";
+      break;
+
+    default:
+      break;
   }
-}
+};
 
 const validateForm = () => {
-  validateField('email')
-  validateField('password')
-  
-  return !Object.values(errors).some(error => error)
-}
+  validateField("email");
+  validateField("password");
+
+  return !Object.values(errors).some((error) => error);
+};
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
-  
-  const result = await authStore.login(form.email, form.password)
-  
-  if (result.success) {
-    router.push({ name: 'MonEspace' })
+  if (!validateForm()) return;
+
+  loading.value = true;
+  erreur.value = "";
+  success.value = "";
+
+  try {
+    const response = await connexion({
+      email: form.email,
+      motDePasse: form.password,
+    });
+
+    const data = response.data;
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem(
+      "utilisateur",
+      JSON.stringify({
+        idUser: data.idUser,
+        nom: data.nom,
+        prenom: data.prenom,
+        email: data.email,
+        telephone: data.telephone,
+        role: data.role,
+      })
+    );
+
+    success.value = "Connexion réussie.";
+
+    setTimeout(() => {
+      if (route.query.formationId) {
+        router.push(`/formations/${route.query.formationId}`);
+      } else {
+        router.push("/mon-espace");
+      }
+    }, 600);
+  } catch (e) {
+    console.error("Erreur connexion :", e);
+
+    if (e.response && e.response.data && e.response.data.message) {
+      erreur.value = e.response.data.message;
+    } else {
+      erreur.value = "Erreur de connexion";
+    }
+  } finally {
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
