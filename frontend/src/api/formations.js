@@ -1,7 +1,7 @@
 import api from "./api";
 
-export const getFormations = () => {
-  return api.get("/formations");
+export const getFormations = (params = {}) => {
+  return api.get("/formations", { params });
 };
 
 export const getFormationById = (id) => {

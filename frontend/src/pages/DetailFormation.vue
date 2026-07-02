@@ -18,7 +18,7 @@
           <div class="detail-img-placeholder">
             <span
               class="material-symbols-outlined"
-              style="font-size: 60px; opacity: 0.5;"
+              style="font-size: 60px; opacity: 0.5"
             >
               school
             </span>
@@ -57,7 +57,7 @@
             <div class="col-md-6 mb-3">
               <strong>Prix :</strong>
               <p class="h4 text-brand-orange">
-                {{ formatPrice(formation.prixRemise || formation.prix) }} Ar
+                {{ formatPrice(prixFinal) }} Ar
               </p>
             </div>
           </div>
@@ -77,6 +77,62 @@
           <div v-if="erreurInscription" class="alert alert-danger mt-3">
             {{ erreurInscription }}
           </div>
+
+          <!-- BLOC PAIEMENT -->
+          <div v-if="inscriptionCreee" class="card paiement-card mt-4 p-3">
+            <h5 class="fw-bold mb-3">Paiement</h5>
+
+            <div class="mb-3">
+              <label class="form-label">Opérateur</label>
+              <select v-model="operateurPaiement" class="form-select">
+                <option value="mvola">Mvola</option>
+                <option value="orange">Orange Money</option>
+                <option value="airtel">Airtel Money</option>
+              </select>
+            </div>
+
+            <p class="mb-2">
+              Montant à payer :
+              <strong>{{ formatPrice(prixFinal) }} Ar</strong>
+            </p>
+
+            <button
+              class="btn btn-success px-4 py-2"
+              @click="handlePaiement"
+              :disabled="paiementLoading || paiementEffectue"
+            >
+              {{
+                paiementLoading
+                  ? "Paiement en cours..."
+                  : paiementEffectue
+                    ? "Paiement effectué"
+                    : "Payer maintenant"
+              }}
+            </button>
+
+            <div v-if="messagePaiement" class="alert alert-success mt-3">
+              {{ messagePaiement }}
+            </div>
+
+            <div v-if="erreurPaiement" class="alert alert-danger mt-3">
+              {{ erreurPaiement }}
+            </div>
+
+            <!-- BOUTON PDF -->
+            <div v-if="paiementEffectue" class="mt-3">
+              <button
+                class="btn btn-outline-primary px-4 py-2"
+                @click="handleTelechargerRecu"
+                :disabled="recuLoading"
+              >
+                {{ recuLoading ? "Téléchargement..." : "Télécharger le reçu PDF" }}
+              </button>
+            </div>
+
+            <div v-if="erreurRecu" class="alert alert-danger mt-3">
+              {{ erreurRecu }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -88,10 +144,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getFormationById } from "../api/formations";
 import { inscrireFormation } from "../api/inscription";
+import { payerInscription } from "../api/paiements";
+import { telechargerRecuPdf } from "../api/recu";
 
 const route = useRoute();
 const router = useRouter();
@@ -103,6 +161,21 @@ const error = ref("");
 const inscriptionLoading = ref(false);
 const messageInscription = ref("");
 const erreurInscription = ref("");
+const inscriptionCreee = ref(null);
+
+const paiementLoading = ref(false);
+const messagePaiement = ref("");
+const erreurPaiement = ref("");
+const operateurPaiement = ref("mvola");
+const paiementEffectue = ref(false);
+
+const recuLoading = ref(false);
+const erreurRecu = ref("");
+
+const prixFinal = computed(() => {
+  if (!formation.value) return 0;
+  return formation.value.prixRemise || formation.value.prix || 0;
+});
 
 const chargerDetail = async () => {
   try {
@@ -111,11 +184,9 @@ const chargerDetail = async () => {
 
     const response = await getFormationById(route.params.id);
     formation.value = response.data;
-
-    console.log("Détail formation depuis la base :", formation.value);
   } catch (e) {
     console.error(e);
-    error.value = "Impossible de charger le détail de la formation depuis la base.";
+    error.value = "Impossible de charger le détail de la formation.";
   } finally {
     loading.value = false;
   }
@@ -144,16 +215,18 @@ const getUtilisateurConnecte = () => {
 const handleInscription = async () => {
   messageInscription.value = "";
   erreurInscription.value = "";
+  messagePaiement.value = "";
+  erreurPaiement.value = "";
+  erreurRecu.value = "";
+  inscriptionCreee.value = null;
+  paiementEffectue.value = false;
 
   const utilisateur = getUtilisateurConnecte();
 
   if (!utilisateur || !utilisateur.idUser) {
-    router.push({
-      path: "/connexion",
-      query: {
-        formationId: route.params.id,
-      },
-    });
+    erreurInscription.value =
+      "Vous devez être connecté avant de vous inscrire.";
+    router.push("/connexion");
     return;
   }
 
@@ -165,10 +238,12 @@ const handleInscription = async () => {
       idFormation: Number(route.params.id),
     });
 
+    inscriptionCreee.value = response.data;
+
     messageInscription.value =
-      response.data.message || "Inscription réussie.";
+      response.data.message || "Inscription réussie. Vous pouvez maintenant payer.";
   } catch (e) {
-    console.error("Erreur inscription formation :", e);
+    console.error("Erreur inscription :", e);
 
     if (e.response && e.response.data && e.response.data.message) {
       erreurInscription.value = e.response.data.message;
@@ -177,6 +252,80 @@ const handleInscription = async () => {
     }
   } finally {
     inscriptionLoading.value = false;
+  }
+};
+
+const handlePaiement = async () => {
+  messagePaiement.value = "";
+  erreurPaiement.value = "";
+  erreurRecu.value = "";
+
+  if (!inscriptionCreee.value || !inscriptionCreee.value.idInscription) {
+    erreurPaiement.value = "Aucune inscription à payer.";
+    return;
+  }
+
+  try {
+    paiementLoading.value = true;
+
+    const response = await payerInscription({
+      idInscription: inscriptionCreee.value.idInscription,
+      montant: Number(prixFinal.value),
+      operateur: operateurPaiement.value,
+    });
+
+    messagePaiement.value =
+      response.data.message || "Paiement enregistré avec succès.";
+
+    paiementEffectue.value = true;
+  } catch (e) {
+    console.error("Erreur paiement :", e);
+
+    if (e.response && e.response.data && e.response.data.message) {
+      erreurPaiement.value = e.response.data.message;
+    } else {
+      erreurPaiement.value = "Impossible d'enregistrer le paiement.";
+    }
+  } finally {
+    paiementLoading.value = false;
+  }
+};
+
+const handleTelechargerRecu = async () => {
+  erreurRecu.value = "";
+
+  if (!inscriptionCreee.value || !inscriptionCreee.value.idInscription) {
+    erreurRecu.value = "Aucune inscription disponible pour générer le reçu.";
+    return;
+  }
+
+  try {
+    recuLoading.value = true;
+
+    const response = await telechargerRecuPdf(
+      inscriptionCreee.value.idInscription
+    );
+
+    const blob = new Blob([response.data], {
+      type: "application/pdf",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `recu-inscription-${inscriptionCreee.value.idInscription}.pdf`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("Erreur téléchargement reçu :", e);
+    erreurRecu.value = "Impossible de télécharger le reçu PDF.";
+  } finally {
+    recuLoading.value = false;
   }
 };
 
@@ -214,5 +363,11 @@ onMounted(() => {
 .btn-dark:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.paiement-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fafafa;
 }
 </style>

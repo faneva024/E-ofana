@@ -25,10 +25,22 @@ public class FormationController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public List<FormationResponse> getAllFormations() {
+    public List<FormationResponse> getAllFormations(
+            @RequestParam(required = false) String categorie,
+            @RequestParam(required = false) String ville,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long prixMax
+    ) {
+        String motCle = isNotBlank(search) ? search : q;
+
         return formationRepository.findAll()
                 .stream()
                 .map(this::toResponse)
+                .filter(formation -> filtreCategorie(formation, categorie))
+                .filter(formation -> filtreVille(formation, ville))
+                .filter(formation -> filtreRecherche(formation, motCle))
+                .filter(formation -> filtrePrixMax(formation, prixMax))
                 .toList();
     }
 
@@ -69,6 +81,72 @@ public class FormationController {
         Formation saved = formationRepository.save(formation);
 
         return toResponse(saved);
+    }
+
+    private boolean filtreCategorie(FormationResponse formation, String categorie) {
+        if (!isNotBlank(categorie)) {
+            return true;
+        }
+
+        if ("all".equalsIgnoreCase(categorie) || "Toutes les catégories".equalsIgnoreCase(categorie)) {
+            return true;
+        }
+
+        return containsIgnoreCase(formation.categorie(), categorie);
+    }
+
+    private boolean filtreVille(FormationResponse formation, String ville) {
+        if (!isNotBlank(ville)) {
+            return true;
+        }
+
+        if ("all".equalsIgnoreCase(ville) || "Toutes les villes".equalsIgnoreCase(ville)) {
+            return true;
+        }
+
+        return containsIgnoreCase(formation.ville(), ville)
+                || containsIgnoreCase(formation.lieu(), ville);
+    }
+
+    private boolean filtreRecherche(FormationResponse formation, String motCle) {
+        if (!isNotBlank(motCle)) {
+            return true;
+        }
+
+        return containsIgnoreCase(formation.titre(), motCle)
+                || containsIgnoreCase(formation.description(), motCle)
+                || containsIgnoreCase(formation.categorie(), motCle)
+                || containsIgnoreCase(formation.centre(), motCle)
+                || containsIgnoreCase(formation.ville(), motCle)
+                || containsIgnoreCase(formation.lieu(), motCle);
+    }
+
+    private boolean filtrePrixMax(FormationResponse formation, Long prixMax) {
+        if (prixMax == null || prixMax <= 0) {
+            return true;
+        }
+
+        Long prixFinal = formation.prixRemise() != null
+                ? formation.prixRemise()
+                : formation.prix();
+
+        if (prixFinal == null) {
+            return true;
+        }
+
+        return prixFinal <= prixMax;
+    }
+
+    private boolean containsIgnoreCase(String valeur, String recherche) {
+        if (valeur == null || recherche == null) {
+            return false;
+        }
+
+        return valeur.toLowerCase().contains(recherche.toLowerCase());
+    }
+
+    private boolean isNotBlank(String valeur) {
+        return valeur != null && !valeur.trim().isEmpty();
     }
 
     private FormationResponse toResponse(Formation formation) {

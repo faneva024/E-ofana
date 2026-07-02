@@ -11,6 +11,7 @@
               class="search-pill-input"
               placeholder="Formation, compétence, domaine..."
               type="text"
+              @keyup.enter="handleSearch"
             />
           </div>
 
@@ -19,8 +20,11 @@
           <div class="search-field-wrapper" style="min-width: 180px;">
             <span class="material-symbols-outlined search-field-icon">location_on</span>
 
-            <!-- VILLES DYNAMIQUES DEPUIS LA BASE -->
-            <select v-model="selectedCity" class="form-select search-pill-select">
+            <select
+              v-model="selectedCity"
+              class="form-select search-pill-select"
+              @change="handleSearch"
+            >
               <option value="all">Toutes les villes</option>
 
               <option
@@ -65,11 +69,11 @@
                 Catégorie
               </label>
 
-              <!-- CATÉGORIES DYNAMIQUES DEPUIS LA BASE -->
               <select
                 id="cat-select"
                 v-model="selectedCategory"
                 class="form-select form-select-sm custom-select-filter"
+                @change="handleSearch"
               >
                 <option value="all">Toutes les catégories</option>
 
@@ -93,6 +97,7 @@
                 min="0"
                 step="50000"
                 type="range"
+                @change="handleSearch"
               />
 
               <div class="d-flex justify-content-between text-muted small mt-2">
@@ -284,6 +289,8 @@ const maxPrice = ref(500000);
 const sortBy = ref("relevant");
 
 const formations = ref([]);
+const toutesLesFormations = ref([]);
+
 const loading = ref(false);
 const error = ref("");
 
@@ -293,22 +300,52 @@ const durationFilters = reactive({
   long: false,
 });
 
-const chargerFormations = async () => {
+const normaliserListeFormations = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (data && Array.isArray(data.content)) {
+    return data.content;
+  }
+
+  return [];
+};
+
+const construireParamsRecherche = () => {
+  const params = {};
+
+  if (searchQuery.value && searchQuery.value.trim() !== "") {
+    params.search = searchQuery.value.trim();
+  }
+
+  if (selectedCity.value && selectedCity.value !== "all") {
+    params.ville = selectedCity.value;
+  }
+
+  if (selectedCategory.value && selectedCategory.value !== "all") {
+    params.categorie = selectedCategory.value;
+  }
+
+  if (maxPrice.value && maxPrice.value > 0) {
+    params.prixMax = maxPrice.value;
+  }
+
+  return params;
+};
+
+const chargerToutesLesFormations = async () => {
   try {
     loading.value = true;
     error.value = "";
 
     const response = await getFormations();
+    const data = normaliserListeFormations(response.data);
 
-    if (Array.isArray(response.data)) {
-      formations.value = response.data;
-    } else if (response.data && Array.isArray(response.data.content)) {
-      formations.value = response.data.content;
-    } else {
-      formations.value = [];
-    }
+    toutesLesFormations.value = data;
+    formations.value = data;
 
-    console.log("Formations depuis la base :", formations.value);
+    console.log("Toutes les formations depuis la base :", data);
   } catch (e) {
     console.error(e);
     error.value = "Impossible de charger les formations depuis la base.";
@@ -317,23 +354,36 @@ const chargerFormations = async () => {
   }
 };
 
-/**
- * Villes dynamiques depuis les formations de la base.
- * Donc plus besoin d'écrire Antananarivo, Toamasina, Antsirabe à la main.
- */
+const chargerFormations = async () => {
+  try {
+    loading.value = true;
+    error.value = "";
+
+    const params = construireParamsRecherche();
+
+    const response = await getFormations(params);
+    formations.value = normaliserListeFormations(response.data);
+
+    console.log("Paramètres envoyés au backend :", params);
+    console.log("Formations filtrées depuis le backend :", formations.value);
+  } catch (e) {
+    console.error(e);
+    error.value = "Impossible de charger les formations depuis la base.";
+  } finally {
+    loading.value = false;
+  }
+};
+
 const villesDisponibles = computed(() => {
-  const villes = formations.value
+  const villes = toutesLesFormations.value
     .map((formation) => formation.ville || formation.lieu)
     .filter((ville) => ville && ville.trim() !== "");
 
   return [...new Set(villes)];
 });
 
-/**
- * Catégories dynamiques depuis les formations de la base.
- */
 const categoriesDisponibles = computed(() => {
-  const categories = formations.value
+  const categories = toutesLesFormations.value
     .map((formation) => formation.categorie)
     .filter((categorie) => categorie && categorie.trim() !== "");
 
@@ -342,28 +392,7 @@ const categoriesDisponibles = computed(() => {
 
 const filteredFormations = computed(() => {
   return formations.value.filter((formation) => {
-    const titre = formation.titre || "";
-    const categorie = formation.categorie || "";
-    const ville = formation.ville || formation.lieu || "";
     const duree = formation.duree || "";
-
-    const matchSearch =
-      searchQuery.value === "" ||
-      titre.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      categorie.toLowerCase().includes(searchQuery.value.toLowerCase());
-
-    const matchCity =
-      selectedCity.value === "all" ||
-      selectedCity.value === "" ||
-      ville.toLowerCase() === selectedCity.value.toLowerCase();
-
-    const matchCategory =
-      selectedCategory.value === "all" ||
-      selectedCategory.value === "" ||
-      categorie.toLowerCase() === selectedCategory.value.toLowerCase();
-
-    const price = formation.prixRemise || formation.prix || 0;
-    const matchPrice = price <= maxPrice.value;
 
     const hasDurationFilter =
       durationFilters.short ||
@@ -389,7 +418,7 @@ const filteredFormations = computed(() => {
             dureeLower.includes("an")));
     }
 
-    return matchSearch && matchCity && matchCategory && matchPrice && matchDuration;
+    return matchDuration;
   });
 });
 
@@ -417,7 +446,7 @@ const formatPrice = (value) => {
 };
 
 const handleSearch = () => {
-  console.log("Recherche :", searchQuery.value, "Ville :", selectedCity.value);
+  chargerFormations();
 };
 
 const clearFilters = () => {
@@ -428,6 +457,8 @@ const clearFilters = () => {
   durationFilters.short = false;
   durationFilters.medium = false;
   durationFilters.long = false;
+
+  chargerFormations();
 };
 
 const goToDetail = (id) => {
@@ -435,7 +466,7 @@ const goToDetail = (id) => {
 };
 
 onMounted(() => {
-  chargerFormations();
+  chargerToutesLesFormations();
 });
 </script>
 
