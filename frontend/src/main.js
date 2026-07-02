@@ -1,18 +1,19 @@
-import { createApp } from "vue";
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { useAuthStore } from './stores/authStore'
+import router from './router'
+import App from './App.vue'
+import OptimizedImage from './components/OptimizedImage.vue'
+import './assets/scss/main.scss'
+import './styles/variables.css'
 
-const App = {
-  template: `
-    <div style="font-family: Arial; padding: 30px;">
-      <h1>E-OFANA</h1>
-      <p>Frontend Vue.js temporaire démarré avec Docker.</p>
-      <p>Backend URL : {{ apiUrl }}</p>
-    </div>
-  `,
-  data() {
-    return {
-      apiUrl: import.meta.env.VITE_API_URL
-    };
-  }
-};
+const app = createApp(App)
+const pinia = createPinia()
+app.use(pinia)
+app.use(router)
+app.component('OptimizedImage', OptimizedImage)
 
-createApp(App).mount("#app");
+const auth = useAuthStore()
+auth.loadFromStorage()
+
+app.mount('#app')
