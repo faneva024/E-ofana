@@ -33,3 +33,25 @@ CREATE INDEX "idxInscriptionsCreated"   ON "inscriptions" ("createdAt" DESC);
 -- Index paiements
 CREATE INDEX "idxPaiementsInscription" ON "paiements" ("idInscription");
 CREATE INDEX "idxPaiementsStatut"      ON "paiements" ("statut");
+
+INSERT INTO "sessionsFormation" (
+  "idFormation",
+  "dateDebut",
+  "dateFin",
+  "dateLimiteInscription",
+  "placesTotal",
+  "placesRestantes"
+)
+SELECT
+  f."idFormation",
+  CURRENT_DATE + INTERVAL '7 days',
+  CURRENT_DATE + INTERVAL '37 days',
+  CURRENT_DATE + INTERVAL '6 days',
+  20,
+  20
+FROM formations f
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM "sessionsFormation" s
+  WHERE s."idFormation" = f."idFormation"
+);

@@ -62,9 +62,21 @@
             </div>
           </div>
 
-          <button class="btn btn-dark px-4 py-2 mt-3" @click="allerInscription">
-             S'inscrire
-        </button>
+          <button
+            class="btn btn-dark px-4 py-2 mt-3"
+            @click="handleInscription"
+            :disabled="inscriptionLoading"
+          >
+            {{ inscriptionLoading ? "Inscription en cours..." : "S'inscrire" }}
+          </button>
+
+          <div v-if="messageInscription" class="alert alert-success mt-3">
+            {{ messageInscription }}
+          </div>
+
+          <div v-if="erreurInscription" class="alert alert-danger mt-3">
+            {{ erreurInscription }}
+          </div>
         </div>
       </div>
     </div>
@@ -79,6 +91,7 @@
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getFormationById } from "../api/formations";
+import { inscrireFormation } from "../api/inscription";
 
 const route = useRoute();
 const router = useRouter();
@@ -86,6 +99,10 @@ const router = useRouter();
 const formation = ref(null);
 const loading = ref(false);
 const error = ref("");
+
+const inscriptionLoading = ref(false);
+const messageInscription = ref("");
+const erreurInscription = ref("");
 
 const chargerDetail = async () => {
   try {
@@ -109,13 +126,58 @@ const formatPrice = (value) => {
   return new Intl.NumberFormat("fr-FR").format(value);
 };
 
-const allerInscription = () => {
-  router.push({
-    path: "/inscription",
-    query: {
-      formationId: route.params.id,
-    },
-  });
+const getUtilisateurConnecte = () => {
+  const utilisateur = localStorage.getItem("utilisateur");
+
+  if (!utilisateur) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(utilisateur);
+  } catch (error) {
+    console.error("Utilisateur localStorage invalide :", error);
+    return null;
+  }
+};
+
+const handleInscription = async () => {
+  messageInscription.value = "";
+  erreurInscription.value = "";
+
+  const utilisateur = getUtilisateurConnecte();
+
+  if (!utilisateur || !utilisateur.idUser) {
+    router.push({
+      path: "/connexion",
+      query: {
+        formationId: route.params.id,
+      },
+    });
+    return;
+  }
+
+  try {
+    inscriptionLoading.value = true;
+
+    const response = await inscrireFormation({
+      idUser: utilisateur.idUser,
+      idFormation: Number(route.params.id),
+    });
+
+    messageInscription.value =
+      response.data.message || "Inscription réussie.";
+  } catch (e) {
+    console.error("Erreur inscription formation :", e);
+
+    if (e.response && e.response.data && e.response.data.message) {
+      erreurInscription.value = e.response.data.message;
+    } else {
+      erreurInscription.value = "Impossible de faire l'inscription.";
+    }
+  } finally {
+    inscriptionLoading.value = false;
+  }
 };
 
 const retour = () => {
@@ -147,5 +209,10 @@ onMounted(() => {
   background-color: #1a1a1a;
   border: none;
   border-radius: 8px;
+}
+
+.btn-dark:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 </style>

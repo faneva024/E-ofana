@@ -202,178 +202,98 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useAuthStore } from '../../stores/authStore'
+import { ref, reactive } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { connexion } from "../../api/auth";
 
-const authStore = useAuthStore()
-const editing = ref(false)
-const submitting = ref(false)
-const apiError = ref('')
+const router = useRouter();
+const route = useRoute();
 
-const editForm = ref({
-  prenom: authStore.user?.prenom || '',
-  nom: authStore.user?.nom || '',
-  telephone: authStore.user?.telephone || '',
-  password: '',
-  confirmPassword: ''
-})
+const form = reactive({
+  email: "",
+  password: "",
+  rememberMe: false,
+});
 
-const initials = computed(() => {
-  const p = authStore.user?.prenom || ''
-  const n = authStore.user?.nom || ''
-  if (p && n) return (p[0] + n[0]).toUpperCase()
-  if (authStore.user?.email) return authStore.user.email[0].toUpperCase()
-  return 'U'
-})
+const errors = reactive({});
+const showPassword = ref(false);
+const loading = ref(false);
+const erreur = ref("");
+const success = ref("");
 
-const displayName = computed(() => {
-  const p = authStore.user?.prenom || ''
-  const n = authStore.user?.nom || ''
-  if (p && n) return p + ' ' + n
-  return authStore.user?.email?.split('@')[0] || 'Utilisateur'
-})
-
-const memberSince = computed(() => {
-  if (authStore.user?.date_creation) {
-    return new Date(authStore.user.date_creation).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-  }
-  return 'Juin 2026'
-})
-
-const inscriptions = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    ecole: 'TechAcademy Antananarivo',
-    categorie: 'Informatique',
-    date: '2025-06-15',
-    statut: 'inscrit',
-    paiement_confirme: true,
-    progression: 65,
-    prix: 150000,
-    duree: '3 mois'
-  },
-  {
-    id: 2,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    ecole: 'Business School Tana',
-    categorie: 'Business & Management',
-    date: '2025-07-01',
-    statut: 'reserve',
-    paiement_confirme: false,
-    progression: 12,
-    prix: 80000,
-    duree: '6 semaines'
-  },
-  {
-    id: 3,
-    formation: "Gestion d'Exploitation Agricole",
-    ecole: 'Institut Rural Madagascar',
-    categorie: 'Agriculture',
-    date: '2025-03-10',
-    statut: 'termine',
-    paiement_confirme: true,
-    progression: 100,
-    prix: 120000,
-    duree: '4 mois'
-  }
-])
-
-const enCours = computed(() => inscriptions.value.filter(i => i.statut !== 'termine').length)
-const termine = computed(() => inscriptions.value.filter(i => i.statut === 'termine').length)
-
-const recus = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    date: '2025-06-15',
-    montant: 150000,
-    reference: 'REC-2025-001',
-    methode: 'Mobile Money',
-    statut: 'paye'
-  },
-  {
-    id: 2,
-    formation: "Gestion d'Exploitation Agricole",
-    date: '2025-03-10',
-    montant: 120000,
-    reference: 'REC-2025-002',
-    methode: 'Virement bancaire',
-    statut: 'paye'
-  },
-  {
-    id: 3,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    date: '2025-07-01',
-    montant: 80000,
-    reference: 'REC-2025-003',
-    methode: 'Mobile Money',
-    statut: 'en_attente'
-  }
-])
-
-const filteredRecus = computed(() => recus.value)
-
-function formatPrice(value) {
-  return new Intl.NumberFormat('fr-FR').format(value)
-}
-
-function formatDate(date) {
-  return new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric'
-  })
-}
-
-function downloadRecu(item) {
-  console.log('Téléchargement du reçu:', item.reference || item.id)
-}
-
-function toggleEdit() {
-  if (editing.value) {
-    editForm.value = {
-      prenom: authStore.user?.prenom || '',
-      nom: authStore.user?.nom || '',
-      telephone: authStore.user?.telephone || '',
-      password: '',
-      confirmPassword: ''
+const validateField = (field) => {
+  switch (field) {
+    case "email": {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      errors.email = emailRegex.test(form.email) ? "" : "Email invalide";
+      break;
     }
-    apiError.value = ''
+
+    case "password":
+      errors.password = form.password ? "" : "Le mot de passe est requis";
+      break;
+
+    default:
+      break;
   }
-  editing.value = !editing.value
-}
+};
 
-function saveProfile() {
-  apiError.value = ''
+const validateForm = () => {
+  validateField("email");
+  validateField("password");
 
-  if (!editForm.value.prenom.trim() || !editForm.value.nom.trim()) {
-    apiError.value = 'Le prénom et le nom sont requis.'
-    return
+  return !Object.values(errors).some((error) => error);
+};
+
+const handleSubmit = async () => {
+  if (!validateForm()) return;
+
+  loading.value = true;
+  erreur.value = "";
+  success.value = "";
+
+  try {
+    const response = await connexion({
+      email: form.email,
+      motDePasse: form.password,
+    });
+
+    const data = response.data;
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem(
+      "utilisateur",
+      JSON.stringify({
+        idUser: data.idUser,
+        nom: data.nom,
+        prenom: data.prenom,
+        email: data.email,
+        telephone: data.telephone,
+        role: data.role,
+      })
+    );
+
+    success.value = "Connexion réussie.";
+
+    setTimeout(() => {
+      if (route.query.formationId) {
+        router.push(`/formations/${route.query.formationId}`);
+      } else {
+        router.push("/mon-espace");
+      }
+    }, 600);
+  } catch (e) {
+    console.error("Erreur connexion :", e);
+
+    if (e.response && e.response.data && e.response.data.message) {
+      erreur.value = e.response.data.message;
+    } else {
+      erreur.value = "Erreur de connexion";
+    }
+  } finally {
+    loading.value = false;
   }
-
-  if (editForm.value.password || editForm.value.confirmPassword) {
-    if (editForm.value.password.length < 6) {
-      apiError.value = 'Le mot de passe doit contenir au moins 6 caractères.'
-      return
-    }
-    if (editForm.value.password !== editForm.value.confirmPassword) {
-      apiError.value = 'Les mots de passe ne correspondent pas.'
-      return
-    }
-  }
-
-  submitting.value = true
-  setTimeout(() => {
-    if (authStore.user) {
-      authStore.user.prenom = editForm.value.prenom
-      authStore.user.nom = editForm.value.nom
-      authStore.user.telephone = editForm.value.telephone
-    }
-    submitting.value = false
-    editing.value = false
-    editForm.value.password = ''
-    editForm.value.confirmPassword = ''
-  }, 600)
-}
+};
 </script>
 
 <style scoped>

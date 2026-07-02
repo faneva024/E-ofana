@@ -14,9 +14,14 @@
       <div class="form-card">
         <h2 class="form-title">Connexion</h2>
         
-        <div v-if="authStore.error" class="alert alert-danger" role="alert">
+        <div v-if="erreur" class="alert alert-danger" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          {{ authStore.error }}
+          {{ erreur }}
+        </div>
+
+        <div v-if="success" class="alert alert-success" role="alert">
+           <i class="bi bi-check-circle-fill me-2"></i>
+          {{ success }}
         </div>
 
         <form @submit.prevent="handleSubmit" novalidate>
@@ -94,12 +99,12 @@
           <div class="form-actions">
             <button
               type="submit"
-              class="btn btn-primary btn-lg w-100"
-              :disabled="authStore.loading"
-            >
-              <span v-if="authStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+               class="btn btn-primary btn-lg w-100"
+                :disabled="loading"
+                >
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               <i v-else class="bi bi-box-arrow-in-right me-2"></i>
-              {{ authStore.loading ? 'Connexion en cours...' : 'Se connecter' }}
+              {{ loading ? "Connexion en cours..." : "Se connecter" }}
             </button>
           </div>
 
