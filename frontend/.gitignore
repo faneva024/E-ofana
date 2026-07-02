@@ -1,40 +1,25 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Backend
+target/
+*.class
+*.jar
+*.war
 
-node_modules
-.DS_Store
-dist
-dist-ssr
-coverage
-*.local
+# Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-*.tsbuildinfo
-
-.eslintcache
-
-# Cypress
-/cypress/videos/
-/cypress/screenshots/
-
-# Vitest
-__screenshots__/
-
-# Vite
-*.timestamp-*-*.mjs
+# Environnement
 .env
+frontend/.env
+
+# PDF de test
+recu-*.pdf
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
