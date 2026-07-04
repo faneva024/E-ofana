@@ -2,47 +2,25 @@ package com.eofana.repository;
 
 import com.eofana.entity.Formation;
 import com.eofana.enums.StatutFormation;
+import com.eofana.repository.projection.StatFormationParCentre;
+import com.eofana.repository.projection.StatInscriptionParSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
-/**
- * Dépôt Spring Data JPA pour l'entité Formation.
- *
- * Nom volontairement "FormationRepository" plutôt que "FormationDepot"
- * mentionné dans le ticket T-B-003 — convention Spring idiomatique,
- * cohérente avec UtilisateurRepository créé au sprint précédent.
- */
+
 public interface FormationRepository extends JpaRepository<Formation, Long> {
 
-    /**
-     * Formations actives proposées aux apprenants.
-     *
-     * Note de conception : le ticket demandait "approuvées et non
-     * expirées", mais la notion d'expiration appartient à
-     * SessionFormation.dateLimiteInscription (pas à Formation elle-
-     * même, qui n'a pas de date de fin). Cette méthode renvoie donc
-     * pour l'instant toutes les formations au statut "approuve" ;
-     * la version qui ne renvoie que celles ayant au moins une
-     * session ENCORE ouverte est trouverFormationsActivesAvecSessionOuverte()
-     * ci-dessous, qui s'appuie sur un vrai JOIN.
-     */
+
     List<Formation> findByStatut(StatutFormation statut);
 
     /**
-     * Variante plus fidèle à l'intention métier du ticket : formations
-     * approuvées qui ont AU MOINS une session encore ouverte à
-     * l'inscription (date limite non dépassée). Exploite l'index
-     * idxFormationsStatut et idxSessionsDateDebut.
-     *
-     * Le statut est passé en paramètre (:statut) plutôt qu'écrit en
-     * dur dans la requête JPQL ('approuve') : un littéral de chaîne
-     * dans le JPQL ne passe pas de façon fiable par notre
-     * StatutFormationConverter personnalisé (qui mappe vers le type
-     * ENUM natif PostgreSQL) — passer l'enum Java en paramètre est
-     * la façon correcte de garantir que le converter s'applique.
+     * Formations approuvées qui ont AU MOINS une session encore ouverte
      */
     @Query("""
             SELECT DISTINCT f FROM Formation f
@@ -52,40 +30,17 @@ public interface FormationRepository extends JpaRepository<Formation, Long> {
             """)
     List<Formation> trouverFormationsActivesAvecSessionOuverte(@Param("statut") StatutFormation statut);
 
-    /**
-     * Formations actives (statut = approuve), sans condition sur les
-     * sessions. C'est la méthode demandée littéralement par le ticket
-     * T-B-003 ("formations approuvées et non expirées"), simplifiée
-     * pour ce sprint à "approuvées" — voir la note de conception
-     * ci-dessus pour la version avec sessions.
-     *
-     * Méthode "default" : pas une vraie requête générée par Spring
-     * Data, juste un raccourci pratique au-dessus de findByStatut().
-     */
     default List<Formation> trouverFormationsActives() {
         return findByStatut(StatutFormation.approuve);
     }
 
-    /**
-     * Équivalent à trouverFormationsActives() mais qui exige en plus
-     * une session encore ouverte — recommandé pour la recherche
-     * apprenant réelle (sprint suivant, une fois SessionFormation
-     * peuplée de vraies données).
-     */
+    /** Raccourci : formations approuvées avec session encore ouverte (recommandé). */
     default List<Formation> trouverFormationsActivesEtNonExpirees() {
         return trouverFormationsActivesAvecSessionOuverte(StatutFormation.approuve);
     }
 
     /**
-     * Filtre les formations actives par catégorie.
-     * Exploite l'index idxFormationsCategorie.
-     *
-     * Même remarque que ci-dessus : le statut "approuve" est codé en
-     * dur ici via l'enum Java StatutFormation.approuve passé comme
-     * paramètre par défaut (et non comme littéral JPQL), pour que
-     * le converter personnalisé s'applique correctement.
-     *
-     * @param idCategorie l'identifiant de la catégorie recherchée
+     * Formations approuvées d'une catégorie donnée.
      */
     @Query("""
             SELECT f FROM Formation f
@@ -93,30 +48,15 @@ public interface FormationRepository extends JpaRepository<Formation, Long> {
               AND f.categorie.idCategorie = :idCategorie
             """)
     List<Formation> trouverParCategorie(@Param("idCategorie") Long idCategorie,
-                                         @Param("statut") StatutFormation statut);
+                                        @Param("statut") StatutFormation statut);
 
-    /**
-     * Surcharge pratique : filtre par catégorie en se limitant aux
-     * formations approuvées (cas d'usage réel pour la recherche
-     * apprenant). C'est cette version que le contrôleur appellera.
-     */
+    /** Raccourci : formations approuvées d'une catégorie. */
     default List<Formation> trouverParCategorie(Long idCategorie) {
         return trouverParCategorie(idCategorie, StatutFormation.approuve);
     }
 
     /**
-     * Toutes les formations d'un centre donné, peu importe leur statut.
-     * Utile pour le futur tableau de bord formateur (lister brouillons,
-     * en attente, approuvées, rejetées).
-     */
-    List<Formation> findByCentre_IdCentre(Long idCentre);
-
-    /**
-     * Recherche plein texte sur titre + description, en français.
-     * Exploite l'index GIN idxFormationsFts créé en V7.
-     * Ne renvoie que les formations approuvées (recherche apprenant).
-     *
-     * @param motsCles texte libre saisi par l'apprenant
+     * Recherche plein texte sur titre + description en français.
      */
     @Query(value = """
             SELECT * FROM eofana.formations f
@@ -125,4 +65,131 @@ public interface FormationRepository extends JpaRepository<Formation, Long> {
                   @@ to_tsquery('french', :motsCles)
             """, nativeQuery = true)
     List<Formation> rechercherParMotsCles(@Param("motsCles") String motsCles);
+
+    Page<Formation> findByStatutOrderByCreatedAtDesc(StatutFormation statut, Pageable pageable);
+
+    /**
+     * Toutes les formations d'un centre, TOUS statuts confondus.
+     */
+    List<Formation> findByCentre_IdCentreOrderByCreatedAtDesc(Long idCentre);
+
+    /**
+     * Formations d'un centre filtrées par un statut précis.
+     */
+    List<Formation> findByCentre_IdCentreAndStatutOrderByUpdatedAtDesc(
+            Long idCentre, StatutFormation statut);
+
+    /**
+     * Formations d'un centre filtrées par plusieurs statuts simultanément.
+     */
+    List<Formation> findByCentre_IdCentreAndStatutInOrderByUpdatedAtDesc(
+            Long idCentre, Collection<StatutFormation> statuts);
+
+    /**
+     * Raccourci : formations d'un centre qui nécessitent une action du formateur * (rejetées ou en correction demandée).
+     */
+    default List<Formation> trouverFormationsACorrecter(Long idCentre) {
+        return findByCentre_IdCentreAndStatutInOrderByUpdatedAtDesc(
+                idCentre,
+                List.of(StatutFormation.rejete, StatutFormation.correctionDemandee)
+        );
+    }
+
+    /**
+     * Nombre de formations d'un centre par statut — pour les badges du tableau de bord formateur (ex : "3 en attente de validation").
+     */
+    @Query("""
+            SELECT f.statut, COUNT(f)
+            FROM Formation f
+            WHERE f.centre.idCentre = :idCentre
+            GROUP BY f.statut
+            """)
+    List<Object[]> countByStatutPourCentre(@Param("idCentre") Long idCentre);
+
+    /**
+     * Vérifie si un centre possède déjà une formation avec un titre donné.
+     */
+    boolean existsByCentre_IdCentreAndTitreIgnoreCase(Long idCentre, String titre);
+
+    /**
+     * Formations en attente de modération, toutes centres confondus.
+     */
+    List<Formation> findByStatutOrderByUpdatedAtAsc(StatutFormation statut);
+
+    /**
+     * Formations d'un centre précis filtrées par statut.
+     */
+    List<Formation> findByCentre_IdCentreAndStatut(Long idCentre, StatutFormation statut);
+
+    /**
+     * Statistiques d'inscriptions PAR SESSION pour une formation donnée.
+     */
+    @Query(value = """
+            SELECT
+                s."idSession"                AS idSession,
+                s."dateDebut"                AS dateDebut,
+                s."dateFin"                  AS dateFin,
+                s."placesTotal"              AS placesTotal,
+                s."placesRestantes"          AS placesRestantes,
+                COUNT(CASE WHEN i."typeInsc" = 'inscription'
+                           AND i."statut" NOT IN ('annule', 'rembourse')
+                           THEN 1 END)       AS nbInscrits,
+                COUNT(CASE WHEN i."typeInsc" = 'reservation'
+                           AND i."statut" NOT IN ('annule', 'rembourse')
+                           THEN 1 END)       AS nbReservations,
+                COUNT(CASE WHEN i."statut" NOT IN ('annule', 'rembourse')
+                           THEN 1 END)       AS nbTotal,
+                COALESCE(
+                    SUM(CASE WHEN i."statut" = 'valide'
+                             THEN i."montantFormateur" ELSE 0 END),
+                    0)                       AS montantFormateurValide
+            FROM eofana."sessionsFormation" s
+            LEFT JOIN eofana."inscriptions" i
+                   ON i."idSession" = s."idSession"
+            WHERE s."idFormation" = :idFormation
+            GROUP BY s."idSession", s."dateDebut", s."dateFin",
+                     s."placesTotal", s."placesRestantes"
+            ORDER BY s."dateDebut" ASC
+            """, nativeQuery = true)
+    List<StatInscriptionParSession> compterInscriptionsParSession(
+            @Param("idFormation") Long idFormation);
+
+    /**
+     * Statistiques d'inscriptions PAR FORMATION pour un centre donné.
+     */
+    @Query(value = """
+            SELECT
+                f."idFormation"                               AS idFormation,
+                f."titre"                                     AS titre,
+                CAST(f."statut" AS TEXT)                      AS statut,
+                COUNT(DISTINCT s."idSession")                 AS nbSessions,
+                COUNT(DISTINCT CASE WHEN s."statut" = 'ouvert'
+                                    AND s."dateLimiteInscription" >= CURRENT_DATE
+                               THEN s."idSession" END)        AS nbSessionsOuvertes,
+                COUNT(CASE WHEN i."typeInsc" = 'inscription'
+                           AND i."statut" NOT IN ('annule', 'rembourse')
+                           THEN 1 END)                        AS nbInscrits,
+                COUNT(CASE WHEN i."typeInsc" = 'reservation'
+                           AND i."statut" NOT IN ('annule', 'rembourse')
+                           THEN 1 END)                        AS nbReservations,
+                COALESCE(
+                    SUM(CASE WHEN i."statut" = 'valide'
+                             THEN i."montantFormateur" ELSE 0 END),
+                    0)                                        AS montantFormateurTotal,
+                COALESCE(
+                    SUM(CASE WHEN s."statut" = 'ouvert'
+                             AND s."dateLimiteInscription" >= CURRENT_DATE
+                             THEN s."placesRestantes" ELSE 0 END),
+                    0)                                        AS placesRestantesTotales
+            FROM eofana."formations" f
+            LEFT JOIN eofana."sessionsFormation" s
+                   ON s."idFormation" = f."idFormation"
+            LEFT JOIN eofana."inscriptions" i
+                   ON i."idSession" = s."idSession"
+            WHERE f."idCentre" = :idCentre
+            GROUP BY f."idFormation", f."titre", f."statut", f."createdAt"
+            ORDER BY f."createdAt" DESC
+            """, nativeQuery = true)
+    List<StatFormationParCentre> compterInscriptionsParCentre(
+            @Param("idCentre") Long idCentre);
 }

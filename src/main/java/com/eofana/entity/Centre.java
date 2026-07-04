@@ -8,22 +8,16 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
+/**
+ * Entité JPA mappée sur la table "centres" (schéma eofana — migration V4).
+ */
 @Entity
 @Table(name = "\"centres\"")
 @Getter
@@ -89,6 +83,7 @@ public class Centre {
     @Column(name = "\"reseauxSociaux\"", columnDefinition = "jsonb")
     private String reseauxSociaux;
 
+    // ─── Abonnement & finances ─────────────────────────────────────────────────
     @NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -97,7 +92,6 @@ public class Centre {
     private AbonnementType abonnement = AbonnementType.basic;
 
     @NotNull
-    // PAS D'ANNOTATION @Enumerated ici, c'est un BigDecimal !
     @Column(name = "\"tauxCommission\"", nullable = false, precision = 5, scale = 2)
     @Builder.Default
     private BigDecimal tauxCommission = new BigDecimal("7.00");
@@ -105,19 +99,28 @@ public class Centre {
     @NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "\"frequenceReversement\"", nullable = false, columnDefinition = "\"frequenceReversement\"")
+    @Column(name = "\"frequenceReversement\"", nullable = false,
+            columnDefinition = "\"frequenceReversement\"")
     @Builder.Default
     private FrequenceReversement frequenceReversement = FrequenceReversement.mensuel;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "\"mobileMoneyOperateur\"", columnDefinition = "\"operateurMM\"")
+    @Column(name = "\"mobileMoneyOperateur\"", columnDefinition = "\"operateurMm\"")
     private OperateurMm mobileMoneyOperateur;
 
     @Size(max = 20)
     @Column(name = "\"mobileMoneyNumero\"", length = 20)
     private String mobileMoneyNumero;
 
+    /**
+     *─── Modération ────────────────────────────────────────────────────────────
+     * Statut de validation du centre.
+     * enAttente → soumis, en cours d'examen
+     * actif     → validé, visible dans le catalogue
+     * inactif   → désactivé par le formateur
+     * suspendu  → désactivé par l'administration
+     */
     @NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -125,12 +128,23 @@ public class Centre {
     @Builder.Default
     private StatutCentre statut = StatutCentre.enAttente;
 
+    /**
+     * Modérateur (admin) qui a validé ou suspendu ce centre.
+     * Null tant que le centre est en attente.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "\"idModerateur\"")
     private Utilisateur moderateur;
 
+    /**
+     * Date/heure de la dernière décision de modération.
+     * TIMESTAMPTZ → OffsetDateTime pour conserver le fuseau horaire.
+     */
     @Column(name = "\"validatedAt\"")
-    private LocalDateTime validatedAt;
+    private OffsetDateTime validatedAt;
+
+    // ─── Timestamps ────────────────────────────────────────────────────────────
+
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -139,13 +153,9 @@ public class Centre {
 
     @PrePersist
     public void prePersist() {
-        if (this.createdAt == null) {
-            this.createdAt = OffsetDateTime.now();
-        }
-
-        if (this.updatedAt == null) {
-            this.updatedAt = OffsetDateTime.now();
-        }
+        OffsetDateTime now = OffsetDateTime.now();
+        if (this.createdAt == null) this.createdAt = now;
+        if (this.updatedAt == null) this.updatedAt = now;
     }
 
     @PreUpdate
