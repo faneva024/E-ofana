@@ -44,9 +44,11 @@ src/
     │           ├── controller/
     │           ├── service/
     │           ├── repository/
-    │           ├── model/
+    │           ├── entity/
+    │           ├── enums/
     │           └── EofanaApplication.java
     └── resources/
+        ├── db/migration
         ├── application.properties
         └── static/
 ```
