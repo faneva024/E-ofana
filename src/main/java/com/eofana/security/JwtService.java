@@ -12,14 +12,11 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service de génération et de validation des tokens JWT (T-B-015).
- *
- * Remplace le faux jeton "TOKEN-DEMO-{id}" renvoyé jusqu'ici par
- * AuthController : sans vérification serveur réelle, n'importe qui
- * pouvait se faire passer pour n'importe quel utilisateur en
- * fabriquant lui-même ce jeton.
  */
 @Service
 public class JwtService {
@@ -36,17 +33,23 @@ public class JwtService {
     }
 
     /**
-     * Génère un token JWT pour un utilisateur authentifié.
-     * Le claim "role" permet à JwtAuthenticationFilter de reconnaître
-     * apprenant/formateur/moderateur/commercial/admin sans requête
-     * supplémentaire en base à chaque appel protégé.
+     * Surchargée (Semaine 1) : Génère un token simple sans claims additionnels.
      */
     public String generateToken(Utilisateur utilisateur) {
+        return generateToken(new HashMap<>(), utilisateur);
+    }
+
+    /**
+     * Surchargée - SANDA (Semaine 2 - T-B-115) : Génère un token avec des claims additionnels.
+     * Permet d'injecter "typeUtilisateur" pour différencier dynamiquement l'espace Formateur.
+     */
+    public String generateToken(Map<String, Object> extraClaims, Utilisateur utilisateur) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .setSubject(utilisateur.getEmail())
+                .setClaims(extraClaims) // Injecte les claims supplémentaires (comme typeUtilisateur)
+                .setSubject(utilisateur.getEmail()) // L'email reste l'identifiant principal (Subject)
                 .claim("idUser", utilisateur.getIdUser())
                 .claim("role", utilisateur.getRole().name())
                 .setIssuedAt(now)

@@ -8,6 +8,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -15,13 +16,10 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Filtre d'authentification JWT (T-B-015).
- *
- * Intercepte chaque requête, extrait le token de l'en-tête
- * Authorization: Bearer {token}, le valide, et place l'utilisateur
- * authentifié dans le SecurityContext avec son rôle comme autorité
- * Spring Security (ex : ROLE_APPRENANT), ce qui permettra plus tard
- * de distinguer apprenant / formateur avec @PreAuthorize.
+ * Filtre d'authentification JWT étendu (Semaine 2 - SANDA - T-B-115).
+ * * Intercepte chaque requête, extrait le token, le valide et injecte l'utilisateur
+ * authentifié dans le SecurityContext avec l'autorité Spring Security appropriée
+ * (ROLE_APPRENANT ou ROLE_FORMATEUR) basée sur les claims du jeton.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,6 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // 1. Vérifier la présence et le format du Header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -48,17 +47,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if (jwtService.isTokenValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String email = jwtService.extractUsername(token);
-            Long idUser = jwtService.extractIdUser(token);
-            String role = jwtService.extractRole(token);
+        try {
+            // 2. Valider le token et s'assurer que le thread n'est pas déjà authentifié
+            if (jwtService.isTokenValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
+                
+                String email = jwtService.extractUsername(token);
+                Long idUser = jwtService.extractIdUser(token);
+                String role = jwtService.extractRole(token); // Extrait "FORMATEUR" ou "apprenant"
 
-            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                if (email != null && role != null) {
+                    // 3. Normalisation et attribution de l'autorité Spring Security (ROLE_FORMATEUR / ROLE_APPRENANT)
+                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
 
-            var authToken = new UsernamePasswordAuthenticationToken(
-                    new AuthenticatedUser(idUser, email, role), null, authorities);
+                    // 4. Création du Principal à l'aide de l'objet Record minimal
+                    AuthenticatedUser principal = new AuthenticatedUser(idUser, email, role.toUpperCase());
+                    
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            principal, 
+                            null, 
+                            authorities
+                    );
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // 5. Injection de l'authentification dans le SecurityContextHolder de Spring
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+        } catch (Exception e) {
+            // En cas d'anomalie ou de token altéré, sécurisation en vidant le contexte
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

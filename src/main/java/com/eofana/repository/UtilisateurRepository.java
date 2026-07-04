@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-
+import java.util.UUID;
 /**
  * Dépôt (repository) Spring Data JPA pour l'entité Utilisateur.
  *
@@ -22,32 +22,25 @@ import java.util.Optional;
  */
 public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> {
 
-    /**
-     * Recherche un utilisateur par son email.
-     *
-     * Utilisée pour l'authentification (login) : l'email étant la
-     * seule colonne réellement indexée pour la connexion (idxUtilisateursEmail),
-     * cette requête reste rapide même avec beaucoup d'utilisateurs.
-     *
-     * Renvoie un Optional vide si aucun compte ne correspond à cet
-     * email, plutôt que null — c'est à l'appelant (le service) de
-     * décider quoi faire dans ce cas (ex. lever une exception métier).
-     */
+   // ==========================================
+    // Méthodes héritées de la Semaine 1 (Apprenant)
+    // ==========================================
     Optional<Utilisateur> findByEmail(String email);
+    Boolean existsByEmail(String email);
+    Optional<Utilisateur> findByUuid(UUID uuid);
+
+    // ==========================================
+    // Nouvelles méthodes de la Semaine 2 (Formateur)
+    // ==========================================
+    
+    /**
+     * Recherche un utilisateur par son email et son rôle.
+     * Utile pour la connexion exclusive sur l'espace Formateur.
+     */
+    Optional<Utilisateur> findByEmailAndRole(String email, RoleUtilisateur role);
 
     /**
-     * Vérifie l'existence d'un email en base sans charger l'entité
-     * entière. Utilisée à l'inscription pour valider l'unicité de
-     * l'email avant de tenter un INSERT (message d'erreur clair côté
-     * service plutôt qu'une exception de contrainte SQL bute sur
-     * l'utilisateur final).
+     * Vérifie si un utilisateur existe avec cet email et ce rôle.
      */
-    boolean existsByEmail(String email);
-
-    /**
-     * Liste tous les utilisateurs d'un rôle donné.
-     * Exploite l'index idxUtilisateursRole défini en V7.
-     * Utile par exemple pour un futur écran admin "Liste des formateurs".
-     */
-    List<Utilisateur> findByRole(RoleUtilisateur role);
+    Boolean existsByEmailAndRole(String email, RoleUtilisateur role);
 }

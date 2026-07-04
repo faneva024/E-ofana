@@ -13,24 +13,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
- * Contrôleur d'authentification (T-B-009).
- *
- * CORRECTION DE SÉCURITÉ IMPORTANTE : la version précédente comparait
- * le mot de passe en clair avec `.equals()` alors qu'un
- * BCryptPasswordEncoder (via UtilisateurService.verifierMotDePasse)
- * existait déjà mais n'était jamais appelé, et renvoyait un faux
- * jeton "TOKEN-DEMO-{id}" sans aucune vérification côté serveur.
- * Les deux problèmes sont corrigés ici : vérification BCrypt réelle
- * + émission d'un vrai JWT signé (voir JwtService).
- *
- * Ajout de la route d'inscription (register), absente jusqu'ici.
+ * Contrôleur d'authentification unique (Semaine 2 - SANDA).
+ * Regroupe l'authentification des Apprenants (/api/v1/auth/...)
+ * et l'authentification exclusive des Formateurs (/api/v1/auth-formateur/...).
  */
 @RestController
-@RequestMapping("/api/v1/auth")
 @CrossOrigin(origins = {
         "http://localhost:5173",
         "http://localhost:5174"
@@ -49,7 +41,11 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    @PostMapping("/inscription")
+    // ==========================================
+    // MODULE APPRENANT (Semaine 1)
+    // ==========================================
+
+    @PostMapping("/api/v1/auth/inscription")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
 
         if (utilisateurService.emailDejaUtilise(request.email())) {
@@ -82,7 +78,7 @@ public class AuthController {
         ));
     }
 
-    @PostMapping("/connexion")
+    @PostMapping("/api/v1/auth/connexion")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
         Optional<Utilisateur> utilisateurOptional = utilisateurService.chercherParEmail(request.email());
@@ -95,7 +91,6 @@ public class AuthController {
 
         Utilisateur utilisateur = utilisateurOptional.get();
 
-        // Vérification BCrypt réelle (plus de comparaison en clair)
         if (!utilisateurService.verifierMotDePasse(request.motDePasse(), utilisateur)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
                     "message", "Email ou mot de passe incorrect"
@@ -120,15 +115,76 @@ public class AuthController {
         ));
     }
 
-    /**
-     * Déconnexion : dans un schéma JWT stateless, il n'y a rien à
-     * invalider côté serveur (pas de session). Le frontend doit
-     * simplement supprimer le token stocké côté client. Cette route
-     * existe pour la symétrie de l'API et pour un futur mécanisme de
-     * liste noire de tokens si le besoin apparaît.
-     */
-    @PostMapping("/deconnexion")
+    @PostMapping("/api/v1/auth/deconnexion")
     public ResponseEntity<?> logout() {
         return ResponseEntity.ok(Map.of("message", "Déconnexion réussie"));
+    }
+
+    // ==========================================
+    // MODULE FORMATEUR - SANDA (Semaine 2 - T-B-106)
+    // ==========================================
+
+    /**
+     * Authentification réservée aux formateurs.
+     * Pas d'inscription disponible (les comptes sont gérés par le commercial).
+     */
+    @PostMapping("/api/v1/auth-formateur/connexion")
+    public ResponseEntity<?> loginFormateur(@Valid @RequestBody LoginRequest request) {
+
+        // 1. Recherche par email
+        Optional<Utilisateur> utilisateurOptional = utilisateurService.chercherParEmail(request.email());
+
+        if (utilisateurOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "message", "Email ou mot de passe incorrect"
+            ));
+        }
+
+        Utilisateur utilisateur = utilisateurOptional.get();
+
+        // 2. Filtrage strict du rôle (Doit être FORMATEUR ou formateur selon la casse de l'enum)
+        if (utilisateur.getRole() != RoleUtilisateur.formateur && utilisateur.getRole() != RoleUtilisateur.formateur) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "message", "Accès refusé : vous n'êtes pas un formateur"
+            ));
+        }
+
+        // 3. Vérification du mot de passe via BCrypt
+        if (!utilisateurService.verifierMotDePasse(request.motDePasse(), utilisateur)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "message", "Email ou mot de passe incorrect"
+            ));
+        }
+
+        // 4. Vérification explicite du statut (Compte suspendu)
+        if (Boolean.FALSE.equals(utilisateur.getEstActif())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "message", "Votre compte formateur est suspendu. Veuillez contacter le service commercial"
+            ));
+        }
+
+        // 5. Ajout du claim typeUtilisateur demandé pour la gestion multirôle du filtre JWT
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("typeUtilisateur", "FORMATEUR");
+
+        // 6. Génération du token signé avec les claims additionnels
+        String token = jwtService.generateToken(extraClaims, utilisateur);
+
+        return ResponseEntity.ok(new AuthResponse(
+                token,
+                utilisateur.getIdUser(),
+                utilisateur.getNom(),
+                utilisateur.getPrenom(),
+                utilisateur.getEmail(),
+                utilisateur.getRole().name()
+        ));
+    }
+
+    /**
+     * Déconnexion côté formateur (Suppression locale côté client).
+     */
+    @PostMapping("/api/v1/auth-formateur/deconnexion")
+    public ResponseEntity<?> logoutFormateur() {
+        return ResponseEntity.ok(Map.of("message", "Déconnexion formateur réussie"));
     }
 }
