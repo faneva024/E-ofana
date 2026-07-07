@@ -1,0 +1,75 @@
+@use './variables' as vars;
+@use 'bootstrap/scss/bootstrap' with (
+  $primary: vars.$primary,
+  $secondary: vars.$secondary,
+  $success: vars.$success,
+  $warning: vars.$warning,
+  $danger: vars.$danger,
+  $body-bg: vars.$body-bg,
+  $body-color: vars.$body-color
+);
+
+:root {
+  --color-primary: vars.$color-primary;
+  --color-primary-hover: vars.$color-primary-hover;
+  --color-secondary: vars.$color-secondary;
+  --color-secondary-hover: vars.$color-secondary-hover;
+  --color-background: vars.$color-background;
+  --color-surface: vars.$color-surface;
+  --color-text: vars.$color-text;
+  --color-text-light: vars.$color-text-light;
+  --color-border: vars.$color-border;
+  --color-success: vars.$color-success;
+  --color-warning: vars.$color-warning;
+  --color-danger: vars.$color-danger;
+  --color-star: vars.$color-star;
+  --font-family-base: vars.$font-family-base;
+  --font-family-alt: vars.$font-family-alt;
+  --space-0: vars.$space-0;
+  --space-1: vars.$space-1;
+  --space-2: vars.$space-2;
+  --space-3: vars.$space-3;
+  --space-4: vars.$space-4;
+  --space-5: vars.$space-5;
+  --space-6: vars.$space-6;
+  --space-7: vars.$space-7;
+  --space-8: vars.$space-8;
+}
+
+body {
+  background: vars.$body-bg;
+  font-family: var(--font-family-base);
+  background: var(--color-background);
+  color: var(--color-text);
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.btn-primary {
+  background-color: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: var(--color-surface);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-secondary-hover);
+  border-color: var(--color-secondary-hover);
+}
+
+.card,
+.header,
+.footer {
+  background: var(--color-surface);
+}
+
+.text-muted {
+  color: var(--color-text-light);
+}

@@ -1,0 +1,25 @@
+# Backend
+target/
+*.class
+*.jar
+*.war
+
+# Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# Environnement
+.env
+frontend/.env
+
+# PDF de test
+recu-*.pdf
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
