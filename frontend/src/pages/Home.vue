@@ -22,7 +22,7 @@
           <div class="search-wrapper-field w-100">
             <span class="material-symbols-outlined search-icon-inside">search</span>
             <input v-model="searchQuery" class="search-clean-input" placeholder="Formation, compétence, domaine..."
-              type="text">
+              type="text" @keyup.enter="handleSearch">
           </div>
         </div>
 
@@ -80,79 +80,56 @@
 
   <!-- Section Formations en Vedette -->
   <section class="py-5 container px-4">
-    <div class="d-flex justify-content-between align-items-end mb-4">
-      <div>
-        <h2 class="h3 fw-bold text-dark m-0">Formations en vedette</h2>
-        <p class="text-muted small mb-0 mt-1">Les opportunités les plus demandées du moment</p>
-      </div>
-      <RouterLink
-        to="/formations"
-        class="text-primary-custom fw-bold text-decoration-none d-flex align-items-center gap-1 small"
-        >
-         Voir toutes <span class="material-symbols-outlined all-courses-icon">arrow_forward</span>
-      </RouterLink>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="h3 fw-bold mb-0">Formations suggérées</h2>
     </div>
 
-    <!-- Liste de Cartes Dynamique -->
     <div v-if="loading" class="text-center py-5">
-  Chargement des formations...
-</div>
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+    </div>
 
-<div v-else-if="error" class="alert alert-danger">
-  {{ error }}
-</div>
+    <div v-else-if="erreur" class="alert alert-danger" role="alert">
+      {{ erreur }}
+    </div>
 
-<div v-else-if="courses.length === 0" class="alert alert-info">
-  Aucune formation disponible pour le moment.
-</div>
+    <div v-else class="row g-4">
+      <div
+        v-for="formation in formationsFiltrees"
+        :key="formation.id || formation._id"
+        class="col-12 col-md-6 col-lg-4"
+      >
+        <CarteFormation
+          :formation="formation"
+          @continue="voirDetail"
+        />
+      </div>
 
-<div v-else class="row g-4">
-      <div v-for="course in courses" :key="course.id" class="col-12 col-md-6 col-lg-4">
-        <div class="course-card">
-          <div :class="['course-card-img', course.gradientClass, 'text-white']">
-            <span class="course-badge">{{ course.category }}</span>
-            <span class="material-symbols-outlined course-bg-icon">{{ course.icon }}</span>
-          </div>
-          <div class="p-4 d-flex flex-column flex-grow-1">
-            <h3 class="course-title">{{ course.title }}</h3>
-            <p class="small text-muted mb-3">{{ course.school }}</p>
-
-            <div class="d-flex flex-wrap gap-2 mb-4 mt-auto">
-              <span class="badge bg-light text-dark d-flex align-items-center gap-1 py-2 px-2 badge-custom">
-                <span class="material-symbols-outlined text-muted badge-icon">location_on</span> {{ course.location }}
-              </span>
-              <span class="badge bg-light text-dark d-flex align-items-center gap-1 py-2 px-2 badge-custom">
-                <span class="material-symbols-outlined text-muted badge-icon">schedule</span> {{ course.duration }}
-              </span>
-            </div>
-
-            <div class="pt-3 border-top d-flex justify-content-between align-items-center mb-3">
-              <div>
-                <span class="h5 fw-bold text-primary-custom mb-0">{{ formatPrice(course.price) }} Ar</span>
-              </div>
-              <div class="d-flex align-items-center gap-1 text-warning fw-bold small">
-                <span class="material-symbols-outlined star-icon">star</span> {{ course.rating }}
-              </div>
-            </div>
-
-            <button class="btn-card-action">Découvrir la formation</button>
-          </div>
-        </div>
+      <div v-if="formationsFiltrees.length === 0" class="col-12 text-center text-muted py-5">
+        Aucun résultat trouvé
       </div>
     </div>
   </section>
 
+
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { getFormations } from '../api/formations';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from "vue-router";
+import CarteFormation from "../composants/CarteFormation.vue";
+import navPage from "../composants/navPage.vue";
+import { obtenirFormations } from "../api/formations.js";
+
+const router = useRouter();
 
 // États pour la recherche
 const searchQuery = ref('');
 const selectedCity = ref('');
-
-const cities = ref(['Antananarivo', 'Toamasina', 'Antsirabe', 'Fianarantsoa']);
+const formations = ref([]);
+const loading = ref(false);
+const erreur = ref("");
 
 const categories = ref([
   { name: 'Informatique' },
@@ -163,78 +140,84 @@ const categories = ref([
   { name: 'Artisanat' }
 ]);
 
-// Formations récupérées depuis le backend
-const courses = ref([]);
-const loading = ref(false);
-const error = ref("");
+async function chargerFormations() {
+  loading.value = true;
+  erreur.value = "";
 
-const getIconByCategory = (category) => {
-  const icons = {
-    Informatique: "code",
-    Marketing: "campaign",
-    Finance: "payments",
-    Management: "groups",
-    Agriculture: "potted_plant",
-    Artisanat: "construction"
-  };
-
-  return icons[category] || "school";
-};
-
-const getGradientByCategory = (category) => {
-  const gradients = {
-    Informatique: "img-gradient-blue",
-    Marketing: "img-gradient-purple",
-    Agriculture: "img-gradient-green",
-    Finance: "img-gradient-purple",
-    Management: "img-gradient-blue",
-    Artisanat: "img-gradient-green"
-  };
-
-  return gradients[category] || "img-gradient-blue";
-};
-
-const chargerFormations = async () => {
   try {
-    loading.value = true;
-    error.value = "";
+    const donnees = await obtenirFormations();
 
-    const response = await getFormations();
-
-    console.log("Formations backend :", response.data);
-
-    courses.value = response.data.map((formation) => ({
-      id: formation.idFormation,
-      title: formation.titre,
-      school: formation.centre || "Centre non défini",
-      category: formation.categorie || "Formation",
-      icon: getIconByCategory(formation.categorie),
-      gradientClass: getGradientByCategory(formation.categorie),
-      location: formation.ville || formation.lieu || "Lieu non défini",
-      duration: formation.duree || "Durée non définie",
-      price: formation.prixRemise || formation.prix || 0,
-      rating: formation.noteMoyenne || 0
+    formations.value = donnees.map((formation) => ({
+      ...formation,
+      placesDisponibles: Number(formation.nombrePlaces ?? 0) > 0,
+      commencee: false,
+      progression: 0
     }));
-  } catch (err) {
-    console.error(err);
-    error.value = "Erreur lors du chargement des formations.";
+  } catch (e) {
+    console.error("Erreur chargement formations", e);
+    erreur.value = "Impossible de charger les formations pour le moment.";
   } finally {
     loading.value = false;
   }
+}
+
+const normaliserTexte = (valeur) =>
+  String(valeur ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const cities = computed(() => {
+  const villes = formations.value
+    .map((formation) => formation.lieu || formation.ville)
+    .filter(Boolean);
+
+  return [...new Set(villes)].sort((a, b) => a.localeCompare(b));
+});
+
+const formationsFiltrees = computed(() => {
+  const terme = normaliserTexte(searchQuery.value);
+  const ville = normaliserTexte(selectedCity.value);
+
+  return formations.value.filter((formation) => {
+    const correspondRecherche =
+      !terme ||
+      [
+        formation.titre,
+        formation.nom,
+        formation.description,
+        formation.lieu,
+        formation.ville,
+        formation.categorie
+      ].some((valeur) => normaliserTexte(valeur).includes(terme));
+
+    const correspondVille =
+      !ville ||
+      [formation.lieu, formation.ville].some((valeur) =>
+        normaliserTexte(valeur) === ville
+      );
+
+    return correspondRecherche && correspondVille;
+  });
+});
+
+const handleSearch = () => {
+  searchQuery.value = searchQuery.value.trim();
+  selectedCity.value = selectedCity.value.trim();
 };
+
+function voirDetail(formation) {
+  const id = formation?.id ?? formation?._id ?? formation?.slug;
+
+  if (id) {
+    router.push({ name: 'DetailsFormations', params: { id } });
+  }
+}
 
 onMounted(() => {
   chargerFormations();
 });
-
-const handleSearch = () => {
-  console.log('Recherche lancée:', searchQuery.value, selectedCity.value);
-};
-
-// Formater l'affichage des prix (ex: 150000 -> 150 000)
-const formatPrice = (value) => {
-  return new Intl.NumberFormat('fr-FR').format(value);
-};
 </script>
 
 <style scoped>

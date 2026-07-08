@@ -1,7 +1,7 @@
 <template>
   <div class="layout-container">
     <!-- Barre de navigation -->
-    <Header />
+    <Header v-if="shouldShowChrome" />
 
     <!-- Contenu dynamique de la page -->
     <main class="main-content">
@@ -9,13 +9,22 @@
     </main>
 
     <!-- Pied de page -->
-    <Footer />
+    <Footer v-if="shouldShowChrome" />
   </div>
 </template>
 
 <script setup>
-import Header from '../components/Header.vue';
-import Footer from '../components/Footer.vue';
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import Header from '../components/Header.vue'
+import Footer from '../components/Footer.vue'
+
+const route = useRoute()
+
+const shouldShowChrome = computed(() => {
+  const hiddenRoutes = ['MonEspaceApprenant', 'MonEspace']
+  return !hiddenRoutes.includes(route.name) && !route.path.startsWith('/mon-espace') && !route.path.startsWith('/formateur')
+})
 </script>
 
 <style>

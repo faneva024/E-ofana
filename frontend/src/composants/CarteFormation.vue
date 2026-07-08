@@ -5,7 +5,7 @@
 
       <img
         v-if="formation.image"
-        :src="formation.image"
+        :src=getImage(formation.image)
         :alt="formation.titre"
         class="course-image-img"
       />
@@ -45,26 +45,40 @@
 
       </div>
 
+      <div class="course-details">
+        <span v-if="lieuFormation">
+          <i class="bi bi-geo-alt me-1"></i>
+          {{ lieuFormation }}
+        </span>
+
+        <span :class="{ 'text-danger': !placesDisponibles }">
+          <i class="bi bi-people me-1"></i>
+          {{ labelPlaces }}
+        </span>
+      </div>
+
       <div
-        v-if="formation.progression !== undefined"
+        v-if="formationCommencee"
         class="course-progress"
       >
         <div class="progress" style="height: 8px;">
             <div
             class="progress-bar"
-            :class="{ 'progress-bar-success': formation.progression === 100 }"
-            :style="{ width: formation.progression + '%' }"
+            :class="{ 'progress-bar-success': progression === 100 }"
+            :style="{ width: progression + '%' }"
             ></div>
         </div>
 
-        <small>{{ formation.progression }}% complété</small>
+        <small>{{ progression }}% complété</small>
       </div>
-
       <button
+        v-if="afficherAction"
         class="btn btn-primary-carte w-100 mt-3"
-        @click="$emit('continue', formation)"
+        @click="selectionnerFormation"
       >
-        {{ formation.actionLabel || "Continuer" }}
+        {{ actionLabel }}
+
+        
       </button>
 
     </div>
@@ -73,14 +87,50 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
   formation: {
     type: Object,
     required: true
   }
 })
 
-defineEmits(['continue'])
+const emit = defineEmits(['continue', 'selection'])
+
+const formationCommencee = computed(() => props.formation.commencee === true)
+
+const progression = computed(() => {
+  const valeur = Number(props.formation.progression ?? 0)
+  return Math.min(Math.max(valeur, 0), 100)
+})
+
+const lieuFormation = computed(() => props.formation.lieu || props.formation.ville || "")
+
+const nombrePlaces = computed(() => Number(props.formation.nombrePlaces ?? 0))
+
+const placesDisponibles = computed(() => nombrePlaces.value > 0)
+
+const labelPlaces = computed(() => {
+  if (!placesDisponibles.value) return "Complet"
+  if (nombrePlaces.value === 1) return "1 place"
+  return `${nombrePlaces.value} places`
+})
+
+const afficherAction = computed(() => props.formation.afficherAction !== false)
+
+const actionLabel = computed(() => {
+  if (props.formation.actionLabel) return props.formation.actionLabel
+  return formationCommencee.value ? "Continuer" : "Découvrir formation"
+})
+const getImage = (nom) => {
+  return new URL(`../assets/${nom}`, import.meta.url).href
+}
+
+function selectionnerFormation() {
+  emit('continue', props.formation)
+  emit('selection', props.formation)
+}
 </script>
 
 <style scoped>
@@ -177,6 +227,19 @@ defineEmits(['continue'])
   color: #777;
 }
 
+.course-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.course-details span {
+  min-width: 0;
+}
+
 .course-progress {
   margin-bottom: 12px;
 }
@@ -193,6 +256,11 @@ defineEmits(['continue'])
   }
 
   .course-meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .course-details {
     flex-direction: column;
     gap: 6px;
   }

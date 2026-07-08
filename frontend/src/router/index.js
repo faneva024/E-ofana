@@ -1,78 +1,175 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from "vue-router";
 
-import LayoutPrincipal from '../layouts/LayoutPrincipal.vue'
-import Home from '../pages/Home.vue'
-import RechercheFormations from '../pages/RechercheFormations.vue'
-import VueInscription from '../vues/authentification/VueInscription.vue'
-import VueConnexion from '../vues/authentification/VueConnexion.vue'
-import MonEspace from '../vues/MonEspace.vue'
-import VueAccueil from '../vues/apprenant/VueAccueil.vue'
-import VueMonEspace from '../vues/apprenant/VueMonEspace.vue'
+import Home from "../pages/Home.vue";
+import RechercheFormations from "../pages/RechercheFormations.vue";
 import DetailFormation from "../pages/DetailFormation.vue";
+
+import VueConnexion from "../vues/authentification/VueConnexion.vue";
+import VueInscription from "../vues/authentification/VueInscription.vue";
+import MonEspace from "../vues/MonEspace.vue";
+import VueRecherche from "../vues/apprenant/VueRecherche.vue";
+
+import LayoutFormateur from "../layouts/LayoutFormateur.vue";
+import VueConnexionFormateur from "../vues/formateur/authentification/VueConnexionFormateur.vue";
+import VueTableauDeBordFormateur from "../vues/formateur/VueTableauDeBord.vue";
+import VueMesFormations from "../vues/formateur/VueMesFormations.vue";
+import VueFormulaireFormation from "../vues/formateur/VueFormulaireFormation.vue";
+import VueProfilCentre from "../vues/formateur/VueProfilCentre.vue";
+import VueListeInscrits from "../vues/formateur/VueListeInscrits.vue";
+import VueFinances from "../vues/formateur/VueFinances.vue";
+
+import VueTableauDeBordAdmin from "../vues/admin/VueTableauDeBordAdmin.vue";
 
 const routes = [
   {
-    path: '/',
-    component: LayoutPrincipal,
+    path: "/",
+    redirect: "/home",
+  },
+  {
+    path: "/home",
+    name: "Home",
+    component: Home,
+  },
+  {
+    path: "/formations",
+    name: "RechercheFormations",
+    component: RechercheFormations,
+  },
+  {
+    path: "/recherche",
+    name: "Recherche",
+    component: VueRecherche,
+  },
+  {
+    path: "/formations/:id",
+    name: "DetailFormation",
+    component: DetailFormation,
+  },
+  {
+    path: "/details/:id",
+    name: "DetailsFormations",
+    component: DetailFormation,
+  },
+  {
+    path: "/details",
+    redirect: "/formations/1",
+  },
+  {
+    path: "/connexion",
+    name: "Connexion",
+    component: VueConnexion,
+  },
+  {
+    path: "/inscription",
+    name: "Inscription",
+    component: VueInscription,
+  },
+  {
+    path: "/mon-espace",
+    name: "MonEspace",
+    component: MonEspace,
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: "/formateur/connexion",
+    name: "ConnexionFormateur",
+    component: VueConnexionFormateur,
+  },
+  {
+    path: "/formateur",
+    component: LayoutFormateur,
+    meta: {
+      requiresAuthFormateur: true,
+    },
     children: [
       {
-        path: '',
-        name: 'Home',
-        component: Home
+        path: "",
+        redirect: "/formateur/dashboard",
       },
       {
-        path: 'home',
-        name: 'HomePage',
-        component: Home
+        path: "dashboard",
+        name: "TableauDeBordFormateur",
+        component: VueTableauDeBordFormateur,
       },
       {
-        path: 'recherche-formations',
-        name: 'RechercheFormations',
-        component: RechercheFormations
+        path: "formations",
+        name: "MesFormations",
+        component: VueMesFormations,
       },
       {
-        path: 'formations',
-        name: 'Formations',
-        component: RechercheFormations
+        path: "formations/nouveau",
+        name: "NouvelleFormation",
+        component: VueFormulaireFormation,
       },
       {
-        path: 'formations/:id',
-        name: 'DetailFormation',
-        component: DetailFormation
+        path: "formations/:id/modifier",
+        name: "ModifierFormation",
+        component: VueFormulaireFormation,
       },
       {
-        path: 'inscription',
-        name: 'Inscription',
-        component: VueInscription
+        path: "profil-centre",
+        name: "ProfilCentre",
+        component: VueProfilCentre,
       },
       {
-        path: 'connexion',
-        name: 'Connexion',
-        component: VueConnexion
+        path: "liste-inscrits",
+        name: "ListeInscrits",
+        component: VueListeInscrits,
       },
       {
-        path: 'mon-espace',
-        name: 'MonEspace',
-        component: MonEspace,
-        meta: { requiresAuth: true }
+        path: "finances",
+        name: "FinancesFormateur",
+        component: VueFinances,
       },
-      {
-        path: 'accueil',
-        name: 'Accueil',
-        component: VueAccueil
-      },
-      {
-        path: 'mon-espace-apprenant',
-        name: 'MonEspaceApprenant',
-        component: VueMonEspace
-      }
-    ]
-  }
-]
+    ],
+  },
+
+  {
+    path: "/admin/dashboard",
+    name: "TableauDeBordAdmin",
+    component: VueTableauDeBordAdmin,
+    meta: {
+      requiresAuthAdmin: true,
+    },
+  },
+
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: "/home",
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+  const apprenantToken =
+    localStorage.getItem("token") || localStorage.getItem("authToken");
+
+  const formateurToken = localStorage.getItem("formateurToken");
+  const adminToken = localStorage.getItem("adminToken");
+
+  if (to.meta.requiresAuth && !apprenantToken) {
+    next("/connexion");
+    return;
+  }
+
+  if (to.meta.requiresAuthFormateur && !formateurToken) {
+    next("/formateur/connexion");
+    return;
+  }
+
+  if (to.meta.requiresAuthAdmin && !adminToken) {
+    next("/home");
+    return;
+  }
+
+  next();
+});
+
+export default router;
