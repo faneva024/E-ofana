@@ -37,7 +37,7 @@
   text-decoration: none;
   font-size: 0.9rem;
   transition: color 0.2s;
-} 
+}
 
 .footer-links a:hover {
   color: #ffffff;

@@ -1,16 +1,10 @@
 <template>
-  <div
-    class="modal fade"
-    :class="{ show: visible }"
-    :style="{ display: visible ? 'block' : 'none' }"
-    tabindex="-1"
-    @click.self="close"
-  >
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content reservation-modal">
+  <div class="layout-reservation">
+    <main class="reservation-page">
+      <div class="reservation-container">
+        <div class="reservation-card">
 
-        <div class="modal-header border-0 pb-0">
-          <div class="text-center w-100">
+          <div class="text-center mb-4">
             <div class="step-indicator">
               <div
                 v-for="(s, idx) in steps"
@@ -30,10 +24,7 @@
               {{ currentStep === 0 ? 'Réservez votre place en payant uniquement la commission' : steps[currentStep].subtitle }}
             </p>
           </div>
-          <button type="button" class="btn-close" @click="close" :disabled="submitting"></button>
-        </div>
 
-        <div class="modal-body">
           <form @submit.prevent="handleSubmit" novalidate>
 
             <div v-show="currentStep === 0">
@@ -146,59 +137,58 @@
             </div>
 
           </form>
-        </div>
 
-        <div class="modal-footer border-0 justify-content-between pt-0">
-          <button
-            v-if="currentStep > 0"
-            type="button"
-            class="btn btn-outline-dark px-4 d-flex align-items-center gap-2"
-            @click="prevStep"
-          >
-            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            <span>Précédent</span>
-          </button>
-          <button
-            v-if="currentStep < steps.length - 1"
-            type="button"
-            class="btn btn-eofana-dark px-4 d-flex align-items-center gap-2"
-            @click="nextStep"
-          >
-            <span>Suivant</span>
-            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-          <button
-            v-if="currentStep === steps.length - 1"
-            type="button"
-            class="btn btn-eofana-dark px-4 d-flex align-items-center gap-2"
-            :disabled="submitting"
-            @click="handleSubmit"
-          >
-            <span v-if="submitting">Réservation en cours...</span>
-            <span v-else>Confirmer la réservation</span>
-            <svg v-if="!submitting" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-        </div>
+          <div class="d-flex gap-3 mt-4">
+            <button
+              v-if="currentStep > 0"
+              type="button"
+              class="btn btn-outline-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              @click="prevStep"
+            >
+              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Précédent</span>
+            </button>
+            <button
+              v-if="currentStep < steps.length - 1"
+              type="button"
+              class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              @click="nextStep"
+            >
+              <span>Suivant</span>
+              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <button
+              v-if="currentStep === steps.length - 1"
+              type="button"
+              class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              :disabled="submitting"
+              @click="handleSubmit"
+            >
+              <span v-if="submitting">Réservation en cours...</span>
+              <span v-else>Confirmer la réservation</span>
+              <svg v-if="!submitting" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
 
+        </div>
       </div>
-    </div>
+    </main>
   </div>
-  <div v-if="visible" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api/axios'
 
+const router = useRouter()
+
 const props = defineProps({
-  visible: { type: Boolean, default: false },
   formation: {
     type: Object,
     default: () => ({ id: 1, titre: 'Formation', ecole: 'École', ville: 'Ville', prix: 0 })
   }
 })
-
-const emit = defineEmits(['close', 'success'])
 
 const currentStep = ref(0)
 const submitting = ref(false)
@@ -229,14 +219,6 @@ const commissionMontant = computed(() => {
 const formatPrice = (value) => {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
-
-watch(() => props.visible, (val) => {
-  if (val) {
-    currentStep.value = 0
-    apiError.value = ''
-    submitting.value = false
-  }
-})
 
 const validateStep0 = () => {
   if (!form.nom || !form.prenom || !form.email) {
@@ -270,7 +252,7 @@ const handleSubmit = async () => {
       commissionRate: commissionRate.value
     }
     await api.post('/inscriptions/reserver', payload)
-    emit('success')
+    router.push({ name: 'Home' })
   } catch (err) {
     if (err.response && err.response.data && err.response.data.message) {
       apiError.value = err.response.data.message
@@ -283,35 +265,37 @@ const handleSubmit = async () => {
     submitting.value = false
   }
 }
-
-const close = () => {
-  emit('close')
-}
 </script>
 
 <style scoped>
-.reservation-modal {
+.layout-reservation {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.reservation-page {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.reservation-container {
+  width: 100%;
+  max-width: 600px;
+}
+
+.reservation-card {
+  background: #ffffff;
   border-radius: 1rem;
-  border: none;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
-}
-
-.modal-header {
-  padding: 2rem 2rem 0 2rem;
-}
-
-.modal-body {
-  padding: 1.5rem 2rem;
-}
-
-.modal-footer {
-  padding: 0 2rem 2rem 2rem;
-}
-
-.btn-close {
-  position: absolute;
-  right: 1.25rem;
-  top: 1.25rem;
+  border: 1px solid #e0e0e0;
+  padding: 3rem;
+  width: 100%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .step-indicator {
@@ -555,14 +539,8 @@ const close = () => {
 }
 
 @media (max-width: 576px) {
-  .modal-header {
-    padding: 1.5rem 1.25rem 0 1.25rem;
-  }
-  .modal-body {
-    padding: 1rem 1.25rem;
-  }
-  .modal-footer {
-    padding: 0 1.25rem 1.5rem 1.25rem;
+  .reservation-card {
+    padding: 1.5rem;
   }
   .commission-option {
     padding: 1rem 0.75rem;

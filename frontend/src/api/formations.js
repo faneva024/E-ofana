@@ -5,13 +5,6 @@ const normaliserFormation = (formation) => {
 
   const prix = Number(formation.prix || 0);
   const prixRemise = Number(formation.prixRemise || 0);
-  const prixFinal = prixRemise > 0 ? prixRemise : prix;
-
-  const places =
-    formation.placesRestantes ||
-    formation.nombrePlaces ||
-    formation.placesDisponibles ||
-    0;
 
   return {
     ...formation,
@@ -19,8 +12,8 @@ const normaliserFormation = (formation) => {
     id,
     idFormation: id,
 
-    titre: formation.titre || formation.nom || "Formation sans titre",
-    title: formation.titre || formation.nom || "Formation sans titre",
+    titre: formation.titre || formation.title || "Formation sans titre",
+    title: formation.titre || formation.title || "Formation sans titre",
 
     description: formation.description || "",
 
@@ -40,49 +33,60 @@ const normaliserFormation = (formation) => {
       formation.centre ||
       formation.nomCentre ||
       formation.centreNom ||
+      formation.school ||
       "Centre non défini",
 
-    ville: formation.ville || formation.lieu || "",
-    lieu: formation.lieu || formation.ville || "Lieu non défini",
+    ville:
+      formation.ville ||
+      formation.lieu ||
+      formation.location ||
+      "Antananarivo",
 
-    duree: formation.duree || "Durée non définie",
+    lieu:
+      formation.lieu ||
+      formation.ville ||
+      formation.location ||
+      "Antananarivo",
+
+    duree: formation.duree || formation.duration || "Durée non définie",
+
+    dateDebut: formation.dateDebut || "À définir",
+    dateLimiteInscription: formation.dateLimiteInscription || "À définir",
 
     prix,
     prixRemise,
-    prixFinal,
+    prixFinal: prixRemise > 0 ? prixRemise : prix,
 
-    lecons: formation.lecons || formation.nbLecons || 0,
+    placesRestantes:
+      Number(
+        formation.placesRestantes ||
+          formation.nombrePlaces ||
+          formation.placesDisponibles ||
+          10
+      ) || 10,
 
-    nombrePlaces: Number(places),
-    placesRestantes: Number(places),
-    placesDisponibles: Number(places) > 0,
+    nombrePlaces:
+      Number(
+        formation.nombrePlaces ||
+          formation.placesRestantes ||
+          formation.placesDisponibles ||
+          10
+      ) || 10,
+
+    placesDisponibles: true,
 
     noteMoyenne: formation.noteMoyenne || 0,
     nbAvis: formation.nbAvis || 0,
 
     image: formation.image || "",
-    commencee: false,
-    progression: 0,
   };
 };
 
 const normaliserListe = (data) => {
-  if (Array.isArray(data)) {
-    return data.map(normaliserFormation);
-  }
-
-  if (data && Array.isArray(data.content)) {
-    return data.content.map(normaliserFormation);
-  }
-
-  if (data && Array.isArray(data.formations)) {
-    return data.formations.map(normaliserFormation);
-  }
-
-  if (data && Array.isArray(data.results)) {
-    return data.results.map(normaliserFormation);
-  }
-
+  if (Array.isArray(data)) return data.map(normaliserFormation);
+  if (data && Array.isArray(data.content)) return data.content.map(normaliserFormation);
+  if (data && Array.isArray(data.formations)) return data.formations.map(normaliserFormation);
+  if (data && Array.isArray(data.results)) return data.results.map(normaliserFormation);
   return [];
 };
 
@@ -95,20 +99,20 @@ export const getFormations = (params = {}) => {
   return api.get("/formations", { params });
 };
 
-export const getFormationById = (id) => {
-  return api.get(`/formations/${id}`);
-};
-
 export const obtenirFormationParId = async (id) => {
   const response = await api.get(`/formations/${id}`);
   return normaliserFormation(response.data);
 };
 
-export const createFormation = (data) => {
-  return api.post("/formations", data);
+export const getFormationById = (id) => {
+  return api.get(`/formations/${id}`);
 };
 
 export const creerFormation = (data) => {
+  return api.post("/formations", data);
+};
+
+export const createFormation = (data) => {
   return api.post("/formations", data);
 };
 
@@ -118,8 +122,4 @@ export const modifierFormation = (id, data) => {
 
 export const supprimerFormation = (id) => {
   return api.delete(`/formations/${id}`);
-};
-
-export const obtenirCategories = () => {
-  return api.get("/formations/categories");
 };

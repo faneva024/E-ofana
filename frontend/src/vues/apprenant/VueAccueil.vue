@@ -1,108 +1,115 @@
-<!-- <script scoped>
-import '../../styles/styleCarteF.css';
-</script> -->
 <template>
   <div class="container py-4">
-
-    <!-- HERO -->
-    <div class="text-center mb-4">
+    <section class="text-center mb-5">
       <h1 class="fw-bold">Trouvez la formation qu'il vous faut</h1>
 
-      <div class="input-group mt-3 w-75 mx-auto">
+      <form class="input-group mt-3 mx-auto search-form" @submit.prevent="rechercher">
         <input
           v-model="search"
           type="text"
           class="form-control"
           placeholder="Rechercher une formation..."
+          aria-label="Rechercher une formation"
         />
-        <button class="btn btn-primary" @click="rechercher">
+        <button class="btn btn-primary" type="submit">
           Rechercher
         </button>
-      </div>
-    </div>
+      </form>
+    </section>
 
-    <!-- LOADING -->
-    <div v-if="loading" class="text-center">
-      <div class="spinner-border text-primary"></div>
-    </div>
-
-    <!-- FORMATIONS -->
-    <div class="row g-3" v-else>
-      <div
-        v-for="f in formationsFiltrees"
-        :key="f.id"
-        class="col-12 col-md-6 col-lg-4"
-      >
-        <CarteFormation :formation="f" @click="voirDetail(f.id)" />
+    <section>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h3 fw-bold mb-0">Formations suggérées</h2>
       </div>
 
-      <div v-if="formationsFiltrees.length === 0" class="text-center mt-4">
-        Aucun résultat trouvé
+      <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
       </div>
-    </div>
 
-</div>
+      <div v-else-if="erreur" class="alert alert-danger" role="alert">
+        {{ erreur }}
+      </div>
+
+      <div v-else class="row g-4">
+        <div
+          v-for="formation in formationsFiltrees"
+          :key="formation.id || formation._id"
+          class="col-12 col-md-6 col-lg-4"
+        >
+          <CarteFormation
+            :formation="formation"
+            @selection="voirDetail"
+          />
+        </div>
+
+        <div v-if="formationsFiltrees.length === 0" class="col-12 text-center text-muted py-5">
+          Aucun résultat trouvé
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import CarteFormation from "../../composants/CarteFormation.vue";
-import { requeteAvecAuth } from "../../utilitaires";
-
+import { obtenirFormations } from "../../api/formations.js";
 
 const router = useRouter();
 
 const formations = ref([]);
 const search = ref("");
 const loading = ref(false);
-
+const erreur = ref("");
 
 async function chargerFormations() {
   loading.value = true;
+  erreur.value = "";
 
   try {
-    const data = await requeteAvecAuth("/api/formations");
-    formations.value = data;
+    formations.value = await obtenirFormations();
   } catch (e) {
     console.error("Erreur chargement formations", e);
+    erreur.value = "Impossible de charger les formations pour le moment.";
   } finally {
     loading.value = false;
   }
 }
 
-// async function chargerFormations() {
-//   loading.value = true;
-
-//   try {
-//     // Simuler un délai pour le chargement
-//     await new Promise(resolve => setTimeout(resolve, 1000));
-//     formations.value = mockFormations;
-//   } catch (e) {
-//     console.error("Erreur chargement formations", e);
-//   } finally {
-//     loading.value = false;
-//   }
-// }
-
-
 const formationsFiltrees = computed(() => {
-  if (!search.value) return formations.value;
+  const terme = search.value.trim().toLowerCase();
+  if (!terme) return formations.value;
 
-  return formations.value.filter(f =>
-    f.titre?.toLowerCase().includes(search.value.toLowerCase())
+  return formations.value.filter((formation) =>
+    [
+      formation.titre,
+      formation.nom,
+      formation.lieu,
+      formation.ville,
+      formation.categorie
+    ].some((valeur) => valeur?.toLowerCase().includes(terme))
   );
 });
 
 function rechercher() {
-  // UX simple → filtre déjà réactif
+  search.value = search.value.trim();
 }
 
-function voirDetail(id) {
-  router.push(`/formations/${id}`);
+function voirDetail(formation) {
+  const id = formation.id || formation._id;
+  if (id) router.push(`/formations/${id}`);
 }
 
 onMounted(() => {
   chargerFormations();
 });
 </script>
+
+<style scoped>
+.search-form {
+  max-width: 760px;
+}
+</style>
