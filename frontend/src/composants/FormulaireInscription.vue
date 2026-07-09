@@ -1,12 +1,11 @@
 <template>
-  <div class="layout-registration">
-    <Header />
-    <main class="registration-page">
-      <div class="registration-container">
-        <div class="registration-card">
+  <div class="layout-inscription">
+    <main class="inscription-page">
+      <div class="inscription-container">
+        <div class="inscription-card">
 
           <div class="text-center mb-4">
-            <div class="step-indicator">
+            <div v-if="!success" class="step-indicator">
               <div
                 v-for="(s, idx) in steps"
                 :key="idx"
@@ -20,128 +19,125 @@
                 <div class="step-bar-fill" :style="{ width: stepBarWidth }"></div>
               </div>
             </div>
-            <h1 class="h4 fw-bold text-dark mb-1">{{ steps[currentStep].title }}</h1>
-            <p class="text-muted small mb-0">{{ steps[currentStep].subtitle }}</p>
+            <h1 class="h4 fw-bold text-dark mb-1" v-if="!success">{{ steps[currentStep].title }}</h1>
+            <p class="text-muted small mb-0" v-if="!success && currentStep < steps.length">{{ steps[currentStep].subtitle }}</p>
           </div>
 
           <form @submit.prevent="handleSubmit" novalidate>
 
+            <!-- Step 0: Choix opérateur Mobile Money -->
             <div v-show="currentStep === 0">
+              <label class="form-label text-center d-block mb-3">Choisissez votre opérateur Mobile Money</label>
               <div class="row g-3 mb-4">
-                <div class="col-12 col-md-6">
-                  <label class="form-label" for="last-name">Nom</label>
-                  <div class="input-icon-container">
-                    <span class="input-icon">
-                      <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <div class="col-4">
+                  <label
+                    class="operator-option"
+                    :class="{ selected: operateur === 'mvola' }"
+                  >
+                    <input v-model="operateur" type="radio" value="mvola" class="d-none" />
+                    <span class="operator-icon">
+                      <svg fill="none" height="32" stroke="#e60000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" width="32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     </span>
-                    <input v-model="form.nom" class="form-control" id="last-name" placeholder="RAKOTO" type="text" required />
-                  </div>
+                    <span class="operator-name">Mvola</span>
+                  </label>
                 </div>
-                <div class="col-12 col-md-6">
-                  <label class="form-label" for="first-name">Prénom</label>
-                  <div class="input-icon-container">
-                    <span class="input-icon">
-                      <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <div class="col-4">
+                  <label
+                    class="operator-option"
+                    :class="{ selected: operateur === 'orange-money' }"
+                  >
+                    <input v-model="operateur" type="radio" value="orange-money" class="d-none" />
+                    <span class="operator-icon">
+                      <svg fill="none" height="32" stroke="#ff7900" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" width="32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                     </span>
-                    <input v-model="form.prenom" class="form-control" id="first-name" placeholder="Jean" type="text" required />
-                  </div>
+                    <span class="operator-name">Orange Money</span>
+                  </label>
                 </div>
-              </div>
-              <div class="mb-4">
-                <label class="form-label" for="email">Adresse email</label>
-                <div class="input-icon-container">
-                  <span class="input-icon">
-                    <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                  </span>
-                  <input v-model="form.email" class="form-control" id="email" placeholder="exemple@email.com" type="email" required />
-                </div>
-              </div>
-              <div class="mb-4">
-                <label class="form-label" for="password">Mot de passe</label>
-                <div class="input-icon-container">
-                  <span class="input-icon">
-                    <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  </span>
-                  <input
-                    v-model="form.password"
-                    class="form-control pe-5"
-                    id="password"
-                    placeholder="••••••••"
-                    :type="showPassword ? 'text' : 'password'"
-                    required
-                  />
-                  <button class="password-toggle" type="button" @click="showPassword = !showPassword">
-                    <svg v-if="!showPassword" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    <svg v-else fill="none" height="18" stroke="var(--eofana-gold)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  </button>
-                </div>
-              </div>
-              <div class="mb-4">
-                <label class="form-label" for="password-confirm">Confirmation mot de passe</label>
-                <div class="input-icon-container">
-                  <span class="input-icon">
-                    <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  </span>
-                  <input v-model="form.passwordConfirm" class="form-control" id="password-confirm" placeholder="••••••••" type="password" required />
+                <div class="col-4">
+                  <label
+                    class="operator-option"
+                    :class="{ selected: operateur === 'airtel-money' }"
+                  >
+                    <input v-model="operateur" type="radio" value="airtel-money" class="d-none" />
+                    <span class="operator-icon">
+                      <svg fill="none" height="32" stroke="#e00000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" width="32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </span>
+                    <span class="operator-name">Airtel Money</span>
+                  </label>
                 </div>
               </div>
             </div>
 
+            <!-- Step 1: Confirmation du montant -->
             <div v-show="currentStep === 1">
-              <div class="mb-4">
-                <label class="form-label">Sélectionnez une ou plusieurs formations</label>
-                <div
-                  v-for="f in formations"
-                  :key="f.id"
-                  class="formation-item"
-                  :class="{ selected: selectedFormations.includes(f.id) }"
-                  @click="toggleFormation(f.id)"
-                >
-                  <div class="formation-info">
-                    <span class="formation-title">{{ f.titre }}</span>
-                    <span class="formation-meta">{{ f.ecole }} &middot; {{ f.ville }}</span>
-                  </div>
-                  <div class="formation-price">
-                    <span class="fw-bold">{{ formatPrice(f.prix) }} Ar</span>
-                    <span v-if="selectedFormations.includes(f.id)" class="formation-check">&#10003;</span>
-                  </div>
+              <div class="formation-item selected mb-4" style="cursor: default;">
+                <div class="formation-info">
+                  <span class="formation-title">{{ formation.titre }}</span>
+                  <span class="formation-meta">{{ formation.ecole }} &middot; {{ formation.ville }}</span>
+                </div>
+                <div class="formation-price">
+                  <span class="fw-bold">{{ formatPrice(formation.prix) }} Ar</span>
                 </div>
               </div>
+
+              <div v-if="formation.dateDebut || formation.dateFin" class="mb-4">
+                <div class="d-flex align-items-center gap-2 text-muted small">
+                  <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span v-if="formation.dateDebut">Du {{ formation.dateDebut }}</span>
+                  <span v-if="formation.dateFin">au {{ formation.dateFin }}</span>
+                </div>
+              </div>
+
               <div class="price-summary">
                 <div class="d-flex justify-content-between mb-1">
-                  <span>Frais d'inscription</span>
-                  <span>{{ formatPrice(fraisInscription) }} Ar</span>
+                  <span>Prix de la formation</span>
+                  <span>{{ formatPrice(formation.prix) }} Ar</span>
                 </div>
                 <div class="d-flex justify-content-between mb-1">
-                  <span>Formation(s) ({{ selectedFormations.length }})</span>
-                  <span>{{ formatPrice(formationsTotal) }} Ar</span>
+                  <span>Réduction inscription en ligne (5 %)</span>
+                  <span class="text-success">- {{ formatPrice(reduction) }} Ar</span>
                 </div>
                 <hr class="my-2" />
                 <div class="d-flex justify-content-between fw-bold fs-5">
-                  <span>Total à payer</span>
-                  <span class="text-gold">{{ formatPrice(totalAPayer) }} Ar</span>
+                  <span>Montant final à payer</span>
+                  <span class="text-gold">{{ formatPrice(montantFinal) }} Ar</span>
                 </div>
+                <p class="text-muted small mt-2 mb-0">
+                  <em>Paiement via {{ operateurLabel }}.</em>
+                </p>
               </div>
             </div>
 
+            <!-- Step 2: Attente du paiement -->
             <div v-show="currentStep === 2">
-              <div class="recap-section mb-4">
-                <h6 class="fw-bold mb-3">Informations personnelles</h6>
-                <div class="recap-row"><span>Nom</span><span>{{ form.nom }}</span></div>
-                <div class="recap-row"><span>Prénom</span><span>{{ form.prenom }}</span></div>
-                <div class="recap-row"><span>Email</span><span>{{ form.email }}</span></div>
-              </div>
-              <div class="recap-section mb-4">
-                <h6 class="fw-bold mb-3">Formations sélectionnées</h6>
-                <div v-for="f in selectedFormationsData" :key="f.id" class="recap-row">
-                  <span>{{ f.titre }}</span>
-                  <span>{{ formatPrice(f.prix) }} Ar</span>
+              <div class="text-center mb-4">
+                <div class="payment-waiting-icon mb-3">
+                  <svg fill="none" height="48" stroke="#c69c50" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" width="48" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                 </div>
+                <p class="fw-bold mb-1">Demande de paiement envoyée à votre téléphone</p>
+                <p class="text-muted small mb-0">Veuillez vérifier votre téléphone {{ operateurLabel }} et confirmer le paiement.</p>
               </div>
-              <div class="price-summary">
-                <div class="d-flex justify-content-between fw-bold fs-5">
-                  <span>Total</span>
-                  <span class="text-gold">{{ formatPrice(totalAPayer) }} Ar</span>
+
+              <div class="countdown-container text-center mb-4">
+                <div class="countdown-circle">
+                  <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e0e0e0" stroke-width="6" />
+                    <circle
+                      cx="60" cy="60" r="54"
+                      fill="none"
+                      stroke="#c69c50"
+                      stroke-width="6"
+                      stroke-linecap="round"
+                      :stroke-dasharray="339.292"
+                      :stroke-dashoffset="countdownOffset"
+                      transform="rotate(-90, 60, 60)"
+                      style="transition: stroke-dashoffset 1s linear;"
+                    />
+                  </svg>
+                  <div class="countdown-text">
+                    <span class="countdown-time">{{ formattedTime }}</span>
+                    <span class="countdown-label">minutes restantes</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -151,140 +147,200 @@
               <span>{{ apiError }}</span>
             </div>
 
-            <div class="d-flex gap-3 mt-4">
+          </form>
+
+          <!-- Success state -->
+          <div v-if="success" class="text-center py-5">
+            <div class="success-icon mb-3">
+              <svg fill="none" height="64" stroke="#28a745" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="64" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h3 class="fw-bold text-dark mb-2">Inscription réussie !</h3>
+            <p class="text-muted mb-4">Votre inscription à la formation a été confirmée.</p>
+            <button type="button" class="btn btn-eofana-dark px-5" @click="downloadRecu">
+              <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="me-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Télécharger le reçu PDF
+            </button>
+            <p class="text-muted small mt-3">Redirection vers Mon espace dans {{ redirectCountdown }}s...</p>
+          </div>
+
+          <div v-if="!success" class="d-flex gap-3 mt-4">
+            <button
+              v-if="currentStep === 0"
+              type="button"
+              class="btn btn-outline-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              @click="close"
+            >
+              <span>Annuler</span>
+            </button>
+            <button
+              v-if="currentStep > 0 && currentStep < 2"
+              type="button"
+              class="btn btn-outline-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              @click="prevStep"
+            >
+              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Précédent</span>
+            </button>
+            <button
+              v-if="currentStep === 0"
+              type="button"
+              class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              @click="nextStep"
+            >
+              <span>Continuer</span>
+              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <button
+              v-if="currentStep === 1"
+              type="button"
+              class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
+              :disabled="submitting"
+              @click="handleSubmit"
+            >
+              <span v-if="submitting">Traitement en cours...</span>
+              <span v-else>Confirmer et payer</span>
+              <svg v-if="!submitting" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <div v-if="currentStep === 2" class="d-flex gap-3 w-100">
               <button
-                v-if="currentStep > 0"
                 type="button"
                 class="btn btn-outline-dark flex-fill d-flex align-items-center justify-content-center gap-2"
-                @click="prevStep"
+                :disabled="submitting"
+                @click="cancelPayment"
               >
-                <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                <span>Précédent</span>
+                <span>Annuler</span>
               </button>
               <button
-                v-if="currentStep < steps.length - 1"
                 type="button"
                 class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
-                @click="nextStep"
-              >
-                <span>Suivant</span>
-                <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-              </button>
-              <button
-                v-if="currentStep === steps.length - 1"
-                type="submit"
-                class="btn btn-eofana-dark flex-fill d-flex align-items-center justify-content-center gap-2"
                 :disabled="submitting"
+                @click="confirmPayment"
               >
-                <span v-if="submitting">Inscription en cours...</span>
-                <span v-else>Créer mon compte</span>
-                <svg v-if="!submitting" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                <span v-if="submitting">Vérification...</span>
+                <span v-else>J'ai confirmé le paiement</span>
               </button>
             </div>
-          </form>
+          </div>
+
         </div>
       </div>
     </main>
-    <Footer />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api/axios'
-import Header from '../components/Header.vue'
-import Footer from '../components/Footer.vue'
 
-const currentStep = ref(0)
-const showPassword = ref(false)
-const submitting = ref(false)
-const apiError = ref('')
+const router = useRouter()
 
-const form = reactive({
-  nom: '',
-  prenom: '',
-  email: '',
-  password: '',
-  passwordConfirm: ''
+const props = defineProps({
+  formation: {
+    type: Object,
+    default: () => ({ id: 1, titre: 'Formation', ecole: 'École', ville: 'Ville', prix: 0, dateDebut: '', dateFin: '' })
+  }
 })
 
-const selectedFormations = ref([])
-
-const formations = ref([
-  { id: 1, titre: 'Développement Web Full Stack', ecole: 'TechAcademy Antananarivo', ville: 'Antananarivo', prix: 150000 },
-  { id: 2, titre: 'Marketing Digital & Réseaux Sociaux', ecole: 'Business School Tana', ville: 'Antananarivo', prix: 80000 },
-  { id: 3, titre: 'Comptabilité & Gestion d\'Entreprise', ecole: 'ISCAM Formation', ville: 'Toamasina', prix: 120000 },
-  { id: 4, titre: "Gestion d'Exploitation Agricole", ecole: 'Institut Rural Madagascar', ville: 'Antsirabe', prix: 120000 }
-])
+const currentStep = ref(0)
+const submitting = ref(false)
+const apiError = ref('')
+const operateur = ref('')
+const success = ref(false)
+const redirectCountdown = ref(3)
 
 const steps = [
-  { title: 'Créez votre compte apprenant', subtitle: 'Rejoignez des milliers d\'apprenants sur E-OFANA' },
-  { title: 'Choisir vos formations', subtitle: 'Sélectionnez une ou plusieurs formations' },
-  { title: 'Récapitulatif', subtitle: 'Vérifiez vos informations avant de valider' }
+  { title: 'Choix de l\'opérateur Mobile Money', subtitle: 'Sélectionnez votre opérateur pour effectuer le paiement' },
+  { title: 'Confirmation du montant', subtitle: 'Vérifiez le montant final avant de payer' },
+  { title: 'Attente du paiement', subtitle: 'Confirmez le paiement depuis votre téléphone' }
 ]
+
+const operateurLabel = computed(() => {
+  const labels = { 'mvola': 'Mvola', 'orange-money': 'Orange Money', 'airtel-money': 'Airtel Money' }
+  return labels[operateur.value] || operateur.value
+})
+
+const reduction = computed(() => {
+  return Math.round(props.formation.prix * 0.05)
+})
+
+const montantFinal = computed(() => {
+  return props.formation.prix - reduction.value
+})
 
 const stepBarWidth = computed(() => {
   return ((currentStep.value) / (steps.length - 1)) * 100 + '%'
-})
-
-const fraisInscription = 15000
-
-const formationsTotal = computed(() => {
-  return selectedFormations.value.reduce((sum, id) => {
-    const f = formations.value.find(f => f.id === id)
-    return sum + (f ? f.prix : 0)
-  }, 0)
-})
-
-const totalAPayer = computed(() => {
-  return fraisInscription + formationsTotal.value
-})
-
-const selectedFormationsData = computed(() => {
-  return formations.value.filter(f => selectedFormations.value.includes(f.id))
 })
 
 const formatPrice = (value) => {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
 
-const toggleFormation = (id) => {
-  const idx = selectedFormations.value.indexOf(id)
-  if (idx === -1) {
-    selectedFormations.value.push(id)
-  } else {
-    selectedFormations.value.splice(idx, 1)
+// Countdown (5 minutes)
+const COUNTDOWN_SECONDS = 300
+const countdownRemaining = ref(COUNTDOWN_SECONDS)
+let countdownInterval = null
+
+const countdownOffset = computed(() => {
+  const circumference = 339.292
+  return circumference * (1 - countdownRemaining.value / COUNTDOWN_SECONDS)
+})
+
+const formattedTime = computed(() => {
+  const min = Math.floor(countdownRemaining.value / 60)
+  const sec = countdownRemaining.value % 60
+  return `${min}:${sec.toString().padStart(2, '0')}`
+})
+
+function startCountdown() {
+  stopCountdown()
+  countdownRemaining.value = COUNTDOWN_SECONDS
+  countdownInterval = setInterval(() => {
+    countdownRemaining.value--
+    if (countdownRemaining.value <= 0) {
+      stopCountdown()
+      apiError.value = 'Le délai de paiement a expiré. Veuillez réessayer.'
+    }
+  }, 1000)
+}
+
+function stopCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
   }
 }
 
-const validateStep0 = () => {
-  if (!form.nom || !form.prenom || !form.email || !form.password || !form.passwordConfirm) {
-    apiError.value = 'Veuillez remplir tous les champs obligatoires.'
-    return false
-  }
-  if (form.password.length < 6) {
-    apiError.value = 'Le mot de passe doit contenir au moins 6 caractères.'
-    return false
-  }
-  if (form.password !== form.passwordConfirm) {
-    apiError.value = 'Les mots de passe ne correspondent pas.'
-    return false
-  }
-  return true
+// Redirect countdown for success
+let redirectInterval = null
+
+function startRedirectCountdown() {
+  redirectCountdown.value = 3
+  redirectInterval = setInterval(() => {
+    redirectCountdown.value--
+    if (redirectCountdown.value <= 0) {
+      clearInterval(redirectInterval)
+      redirectInterval = null
+      router.push({ name: 'MonEspace' })
+    }
+  }, 1000)
 }
 
-const validateStep1 = () => {
-  if (selectedFormations.value.length === 0) {
-    apiError.value = 'Veuillez sélectionner au moins une formation.'
-    return false
-  }
-  return true
-}
+// reset quand le composant est monté
+currentStep.value = 0
+
+onBeforeUnmount(() => {
+  stopCountdown()
+  if (redirectInterval) clearInterval(redirectInterval)
+})
 
 const nextStep = () => {
   apiError.value = ''
-  if (currentStep.value === 0 && !validateStep0()) return
-  if (currentStep.value === 1 && !validateStep1()) return
+  if (!operateur.value) {
+    apiError.value = 'Veuillez sélectionner un opérateur Mobile Money.'
+    return
+  }
   currentStep.value++
 }
 
@@ -296,32 +352,82 @@ const prevStep = () => {
 const handleSubmit = async () => {
   apiError.value = ''
   submitting.value = true
+
   try {
     const payload = {
-      nom: form.nom,
-      prenom: form.prenom,
-      email: form.email,
-      password: form.password,
-      formationIds: selectedFormations.value
+      formationId: props.formation.id,
+      operateur: operateur.value,
+      montant: montantFinal.value
     }
     await api.post('/inscriptions/inscrire', payload)
-    currentStep.value = steps.length
+    currentStep.value++
+    startCountdown()
   } catch (err) {
-    if (err.response && err.response.data && err.response.data.message) {
-      apiError.value = err.response.data.message
-    } else if (err.message) {
-      apiError.value = err.message
-    } else {
-      apiError.value = 'Une erreur est survenue. Veuillez réessayer.'
-    }
+    apiError.value = err.response?.data?.message || err.message || 'Une erreur est survenue. Veuillez réessayer.'
   } finally {
     submitting.value = false
   }
 }
+
+const confirmPayment = async () => {
+  apiError.value = ''
+  submitting.value = true
+
+  try {
+    const payload = {
+      formationId: props.formation.id,
+      operateur: operateur.value,
+      montant: montantFinal.value
+    }
+    await api.post('/inscriptions/confirmer-paiement', payload)
+    stopCountdown()
+    success.value = true
+    startRedirectCountdown()
+  } catch (err) {
+    apiError.value = err.response?.data?.message || err.message || 'Une erreur est survenue. Veuillez réessayer.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+const cancelPayment = async () => {
+  stopCountdown()
+  try {
+    await api.post('/inscriptions/annuler-paiement', {
+      formationId: props.formation.id
+    })
+  } catch (e) {
+    // silent
+  }
+  close()
+}
+
+const downloadRecu = async () => {
+  try {
+    const response = await api.get(`/inscriptions/${props.formation.id}/recu`, {
+      responseType: 'blob'
+    })
+    const url = URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `recu-inscription-${props.formation.id}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    apiError.value = 'Erreur lors du téléchargement du reçu.'
+  }
+}
+
+const close = () => {
+  stopCountdown()
+  router.push({ name: 'Home' })
+}
 </script>
 
 <style scoped>
-.layout-registration {
+.layout-inscription {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -329,7 +435,7 @@ const handleSubmit = async () => {
   font-family: 'Hanken Grotesk', sans-serif;
 }
 
-.registration-page {
+.inscription-page {
   flex-grow: 1;
   display: flex;
   align-items: center;
@@ -337,12 +443,12 @@ const handleSubmit = async () => {
   padding: 2rem 1rem;
 }
 
-.registration-container {
+.inscription-container {
   width: 100%;
   max-width: 600px;
 }
 
-.registration-card {
+.inscription-card {
   background: #ffffff;
   border-radius: 1rem;
   border: 1px solid #e0e0e0;
@@ -410,48 +516,99 @@ const handleSubmit = async () => {
   font-size: 0.8rem;
 }
 
-.input-icon-container {
-  position: relative;
+.operator-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.input-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
+.operator-option:hover {
+  border-color: #c69c50;
+  background: rgba(198, 156, 80, 0.04);
+}
+
+.operator-option.selected {
+  border-color: #c69c50;
+  background: rgba(198, 156, 80, 0.08);
+  box-shadow: 0 0 0 3px rgba(198, 156, 80, 0.15);
+}
+
+.operator-icon {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f5f5f5;
 }
 
-.form-control {
-  padding-left: 42px;
-  height: 48px;
+.operator-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.formation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  border-color: #dee2e6;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-.form-control:focus {
+.formation-item.selected {
   border-color: #c69c50;
-  box-shadow: 0 0 0 0.2rem rgba(198, 156, 80, 0.25);
+  background: rgba(198, 156, 80, 0.08);
 }
 
-.form-label {
+.formation-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.formation-title {
   font-weight: 600;
-  font-size: 0.875rem;
-  color: #333333;
-  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  color: #1a1a1a;
 }
 
-.password-toggle {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #9ca3af;
-  padding: 0;
+.formation-meta {
+  font-size: 0.8rem;
+  color: #777777;
+  margin-top: 0.15rem;
+}
+
+.formation-price {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.price-summary {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.25rem;
+  font-size: 0.9rem;
+  color: #333333;
+}
+
+.text-gold {
+  color: #c69c50;
+}
+
+.text-success {
+  color: #28a745;
 }
 
 .btn-eofana-dark {
@@ -488,95 +645,73 @@ const handleSubmit = async () => {
   color: #1a1a1a;
 }
 
-.formation-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.formation-item:hover {
-  border-color: #c69c50;
-  background: rgba(198, 156, 80, 0.04);
-}
-
-.formation-item.selected {
-  border-color: #c69c50;
-  background: rgba(198, 156, 80, 0.08);
-}
-
-.formation-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.formation-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #1a1a1a;
-}
-
-.formation-meta {
-  font-size: 0.8rem;
-  color: #777777;
-  margin-top: 0.15rem;
-}
-
-.formation-price {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.formation-check {
-  color: #c69c50;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-.price-summary {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 1.25rem;
-  font-size: 0.9rem;
-  color: #333333;
-}
-
-.text-gold {
-  color: #c69c50;
-}
-
-.recap-section {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 1.25rem;
-}
-
-.recap-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.35rem 0;
-  font-size: 0.9rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.recap-row:last-child {
-  border-bottom: none;
-}
-
 .alert-danger {
   font-size: 0.85rem;
   border-radius: 8px;
 }
 
-@media (max-width: 768px) {
-  .registration-card {
-    padding: 1.5rem;
+.payment-waiting-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-container {
+  display: flex;
+  justify-content: center;
+}
+
+.countdown-circle {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.countdown-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.countdown-time {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.countdown-label {
+  font-size: 0.65rem;
+  color: #999999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 576px) {
+  .modal-header {
+    padding: 1.5rem 1.25rem 0 1.25rem;
+  }
+  .modal-body {
+    padding: 1rem 1.25rem;
+  }
+  .modal-footer {
+    padding: 0 1.25rem 1.5rem 1.25rem;
+  }
+  .operator-option {
+    padding: 1rem 0.5rem;
+  }
+  .operator-icon {
+    width: 44px;
+    height: 44px;
   }
 }
 </style>

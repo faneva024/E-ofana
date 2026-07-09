@@ -1,96 +1,142 @@
-import { defineStore } from 'pinia'
-import router from '../router'
-import axios from 'axios'
+import { defineStore } from "pinia";
+import router from "../router";
+import api from "../api/api";
 
-const API_BASE = '/api'
-
-export const useAuthStore = defineStore('auth', {
+export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
     token: null,
     loading: false,
-    error: null
+    error: null,
   }),
+
   getters: {
     isAuthenticated: (state) => !!state.token,
-    currentUser: (state) => state.user
+    currentUser: (state) => state.user,
   },
+
   actions: {
     setUser(user, token) {
-      this.user = user
-      this.token = token
-      localStorage.setItem('auth', JSON.stringify({ user, token }))
-      
-      // Set axios default header
-      if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      }
+      this.user = user;
+      this.token = token;
+      this.error = null;
+
+      localStorage.setItem("auth", JSON.stringify({ user, token }));
+      localStorage.setItem("token", token);
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("utilisateur", JSON.stringify(user));
     },
+
     loadFromStorage() {
-      const raw = localStorage.getItem('auth')
-      if (raw) {
-        try {
-          const { user, token } = JSON.parse(raw)
-          this.user = user
-          this.token = token
-          
-          // Set axios default header
-          if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          }
-        } catch (e) {
-          this.user = null
-          this.token = null
-          localStorage.removeItem('auth')
+      const raw = localStorage.getItem("auth");
+
+      if (!raw) return;
+
+      try {
+        const { user, token } = JSON.parse(raw);
+        this.user = user;
+        this.token = token;
+
+        if (token) {
+          localStorage.setItem("token", token);
+          localStorage.setItem("authToken", token);
         }
+      } catch (e) {
+        console.error("Erreur lecture auth", e);
+        this.logout();
       }
     },
+
     logout() {
-      this.user = null
-      this.token = null
-      this.error = null
-      localStorage.removeItem('auth')
-      delete axios.defaults.headers.common['Authorization']
-      router.push({ name: 'Home' })
+      this.user = null;
+      this.token = null;
+      this.error = null;
+
+      localStorage.removeItem("auth");
+      localStorage.removeItem("token");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("utilisateur");
+
+      router.push({ name: "Home" });
     },
+
     async login(email, password) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
+
       try {
-        const response = await axios.post(`${API_BASE}/auth/login`, {
+        const response = await api.post("/auth/connexion", {
           email,
-          password
-        })
-        
-        const { user, token } = response.data
-        this.setUser(user, token)
-        router.push({ name: 'MonEspace' })
-        
-        return { success: true }
+          motDePasse: password,
+        });
+
+        const data = response.data;
+
+        const user = {
+          idUser: data.idUser,
+          id: data.idUser,
+          nom: data.nom,
+          prenom: data.prenom,
+          email: data.email,
+          telephone: data.telephone,
+          role: data.role,
+        };
+
+        this.setUser(user, data.token || `TOKEN-DEMO-${data.idUser}`);
+
+        router.push({ name: "MonEspace" });
+
+        return { success: true };
       } catch (error) {
-        this.error = error.response?.data?.message || 'Erreur de connexion'
-        return { success: false, error: this.error }
+        this.error =
+          error.response?.data?.message || "Erreur de connexion apprenant";
+
+        return { success: false, error: this.error };
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
+
     async register(userData) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
+
       try {
-        const response = await axios.post(`${API_BASE}/auth/register`, userData)
-        
-        const { user, token } = response.data
-        this.setUser(user, token)
-        router.push({ name: 'MonEspace' })
-        
-        return { success: true }
+        const response = await api.post("/utilisateurs", {
+          nom: userData.nom,
+          prenom: userData.prenom,
+          email: userData.email,
+          motDePasse: userData.password || userData.motDePasse,
+          telephone: userData.telephone,
+          role: "apprenant",
+          avatar: "",
+        });
+
+        const data = response.data;
+
+        const user = {
+          idUser: data.idUser,
+          id: data.idUser,
+          nom: data.nom,
+          prenom: data.prenom,
+          email: data.email,
+          telephone: data.telephone,
+          role: data.role,
+        };
+
+        this.setUser(user, `TOKEN-DEMO-${data.idUser}`);
+
+        router.push({ name: "MonEspace" });
+
+        return { success: true };
       } catch (error) {
-        this.error = error.response?.data?.message || 'Erreur lors de l\'inscription'
-        return { success: false, error: this.error }
+        this.error =
+          error.response?.data?.message || "Erreur lors de l'inscription";
+
+        return { success: false, error: this.error };
       } finally {
-        this.loading = false
+        this.loading = false;
       }
-    }
-  }
-})
+    },
+  },
+});

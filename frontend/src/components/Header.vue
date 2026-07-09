@@ -21,7 +21,7 @@
       </button>
 
       <div class="nav-actions-wrapper" :class="{ 'is-open': isMenuOpen }">
-        <a class="nav-action-link d-flex align-items-center gap-2" href="/recherche-formations" @click="closeMenu">
+        <a class="nav-action-link d-flex align-items-center gap-2" href="/recherche" @click="closeMenu">
           <span class="material-symbols-outlined" style="font-size: 20px;">search</span>
           <span>Rechercher</span>
         </a>
