@@ -1,19 +1,24 @@
-import axios from 'axios'
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-})
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-// Attach token if present
 api.interceptors.request.use((config) => {
-  const raw = localStorage.getItem('auth')
-  if (raw) {
-    try {
-      const { token } = JSON.parse(raw)
-      if (token) config.headers.Authorization = `Bearer ${token}`
-    } catch (e) {}
-  }
-  return config
-})
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("formateurToken") ||
+    localStorage.getItem("adminToken");
 
-export default api
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+export default api;

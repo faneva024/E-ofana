@@ -1,0 +1,134 @@
+:root {
+
+  /* ==========================
+     E-OFANA BRAND COLORS
+  ========================== */
+
+  --eo-primary: #1a1a1a;
+  --eo-primary-dark: #333333;
+  --eo-primary-light: #4a4a4a;
+
+  --eo-secondary: #c69c50;
+  --eo-secondary-dark: #b58b45;
+  --eo-secondary-light: #d8b16a;
+
+  /* ==========================
+     NEUTRAL COLORS
+  ========================== */
+
+  --eo-gray-50: #f5f5f5;
+  --eo-gray-100: #eeeeee;
+  --eo-gray-200: #e0e0e0;
+  --eo-gray-300: #cccccc;
+  --eo-gray-400: #aaaaaa;
+  --eo-gray-500: #777777;
+  --eo-gray-600: #555555;
+  --eo-gray-700: #444444;
+  --eo-gray-800: #333333;
+  --eo-gray-900: #1a1a1a;
+
+  /* ==========================
+     SEMANTIC COLORS
+  ========================== */
+
+  --eo-success: #2e7d32;
+  --eo-success-light: #d4edda;
+
+  --eo-danger: #d32f2f;
+  --eo-danger-light: #f8d7da;
+
+  --eo-warning: #f59e0b;
+  --eo-warning-light: #fff3cd;
+
+  --eo-info: #777777;
+  --eo-info-light: #f5f5f5;
+
+  /* ==========================
+     TYPOGRAPHY
+  ========================== */
+
+  --eo-font-family: 'Hanken Grotesk', sans-serif;
+
+  --eo-font-size-base: 1rem;
+  --eo-font-size-sm: 0.875rem;
+  --eo-font-size-lg: 1.125rem;
+  --eo-font-size-xl: 1.25rem;
+  --eo-font-size-2xl: 1.5rem;
+  --eo-font-size-3xl: 1.875rem;
+  --eo-font-size-4xl: 2.25rem;
+
+  /* ==========================
+     SPACING
+  ========================== */
+
+  --eo-spacing-xs: 0.25rem;
+  --eo-spacing-sm: 0.5rem;
+  --eo-spacing-md: 1rem;
+  --eo-spacing-lg: 1.5rem;
+  --eo-spacing-xl: 2rem;
+  --eo-spacing-2xl: 3rem;
+  --eo-spacing-3xl: 4rem;
+
+  /* ==========================
+     BORDER RADIUS
+  ========================== */
+
+  --eo-radius-sm: 0.25rem;
+  --eo-radius-md: 0.5rem;
+  --eo-radius-lg: 0.75rem;
+  --eo-radius-xl: 1rem;
+  --eo-radius-2xl: 1.5rem;
+  --eo-radius-full: 9999px;
+
+  /* ==========================
+     SHADOWS
+  ========================== */
+
+  --eo-shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+  --eo-shadow-md: 0 4px 6px rgba(0,0,0,.1);
+  --eo-shadow-lg: 0 10px 15px rgba(0,0,0,.1);
+  --eo-shadow-xl: 0 20px 25px rgba(0,0,0,.1);
+
+  /* ==========================
+     TRANSITIONS
+  ========================== */
+
+  --eo-transition-fast: 150ms ease-in-out;
+  --eo-transition-base: 250ms ease-in-out;
+  --eo-transition-slow: 350ms ease-in-out;
+}
+
+.btn-primary-carte {
+  --bs-btn-bg: var(--eo-gray-200);
+  --bs-btn-color: var(--eo-primary-dark);
+  --bs-btn-border-color: var(--eo-gray-600);
+    font-size: 0.85rem;
+    font-weight: 600;
+
+  --bs-btn-hover-bg: var(--eo-primary-dark);
+  --bs-btn-hover-border-color: var(--eo-primary-dark);
+  --bs-btn-hover-color: #ffffff;
+
+  --bs-btn-active-bg: var(--eo-primary-dark);
+  --bs-btn-active-border-color: var(--eo-primary-dark);
+}
+
+.btn-secondary {
+  --bs-btn-bg: var(--eo-secondary);
+  --bs-btn-border-color: var(--eo-secondary);
+
+  --bs-btn-hover-bg: var(--eo-secondary-dark);
+  --bs-btn-hover-border-color: var(--eo-secondary-dark);
+
+  --bs-btn-active-bg: var(--eo-secondary-dark);
+  --bs-btn-active-border-color: var(--eo-secondary-dark);
+
+  --bs-btn-color: #ffffff;
+}
+
+.progress-bar {
+  background-color: var(--eo-secondary-light);
+}
+.progress-bar-success {
+  background-color: var(--eo-success);
+}
