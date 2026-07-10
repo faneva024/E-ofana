@@ -92,6 +92,22 @@
                 <artifactId>openpdf</artifactId>
                 <version>1.3.39</version>
         </dependency>
+
+        <!--
+            T-B-211 : export Excel de la liste des inscrits. Aucune
+            bibliothèque tableur n'existait déjà dans le projet (seul
+            openpdf, pour le PDF, était présent) — contrairement à
+            l'hypothèse du ticket ("bibliothèque déjà présente"), un
+            vrai .xlsx nécessite Apache POI. Ajoutée ici plutôt que de
+            générer un faux ".xls" en CSV, pour produire un fichier
+            Excel natif exploitable (largeurs de colonnes, en-tête
+            mis en forme).
+        -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
     </dependencies>
 
     <build>

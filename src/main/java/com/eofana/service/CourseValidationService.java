@@ -1,26 +1,35 @@
 package com.eofana.service;
 
 import com.eofana.entity.Formation;
+import com.eofana.entity.Utilisateur;
+import com.eofana.entity.ValidationFormation;
 import com.eofana.enums.StatutFormation;
+import com.eofana.enums.TypeNotification;
 import com.eofana.repository.FormationRepository;
+import com.eofana.repository.ValidationFormationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
 
 /**
- * T-B-114 : file d'attente de modération des formations.
+ * T-B-114 (module Formateur) + T-B-214 (module Admin) : file d'attente
+ * de modération des formations et décisions de l'admin dessus.
  *
- * notifyStatusChange() se contente ici de documenter le typeNotif à
- * déclencher : le module de notification (table "notifications",
- * service Node.js d'envoi d'email) appartient au module
- * Admin/Modérateur, hors périmètre de ce sprint Formateur — on ne le
- * simule pas en silence pour ne pas donner une fausse impression de
- * fonctionnalité complète.
+ * notifyStatusChange() était volontairement non implémentée tant que
+ * le module Admin (table "notifications", V9) n'existait pas — c'est
+ * désormais le cas (cf. NotificationService), donc elle est
+ * implémentée ici plutôt que de continuer à lever
+ * UnsupportedOperationException.
  */
 @Service
 @RequiredArgsConstructor
 public class CourseValidationService {
 
     private final FormationRepository formationRepository;
+    private final ValidationFormationRepository validationFormationRepository;
+    private final NotificationService notificationService;
 
     /** Place une formation en file d'attente de modération. */
     public Formation submitForValidation(Formation formation) {
@@ -49,20 +58,126 @@ public class CourseValidationService {
     }
 
     /**
-     * Déclenche une notification en cas de changement de statut
-     * (approbation, rejet, demande de correction).
-     *
-     * ⚠ Non implémenté : ce sprint ne couvre pas le module
-     * Admin/Commercial qui gère réellement la table "notifications" et
-     * le service Node.js d'envoi d'email (typeNotif approprié selon le
-     * cas). Cette méthode documente l'intention plutôt que de simuler
-     * un envoi silencieusement.
+     * T-B-214 : approuve une formation en attente — statut APPROUVE,
+     * formation visible sur la plateforme (cf. la vue "vCatalogue" qui
+     * ne renvoie que statut = approuve), trace dans
+     * validationFormations, notification au formateur.
+     */
+    @Transactional
+    public Formation approveCourse(Formation formation, Utilisateur admin) {
+        StatutFormation ancienStatut = formation.getStatut();
+        formation.setStatut(StatutFormation.approuve);
+        formation.setMotifRejet(null);
+        formation = formationRepository.save(formation);
+
+        enregistrerDecision(formation, admin, StatutFormation.approuve, null);
+        notifyStatusChange(formation, ancienStatut, TypeNotification.formationApprouvee,
+                "Votre formation a été approuvée",
+                "Votre formation \"" + formation.getTitre() + "\" a été approuvée et est maintenant visible sur E-OFANA.");
+
+        return formation;
+    }
+
+    /**
+     * T-B-214 : rejette une formation — statut REJETE, motif obligatoire
+     * (répercuté à la fois sur Formation.motifRejet pour l'état courant
+     * et sur validationFormations.commentaire pour l'audit trail),
+     * notification au formateur.
+     */
+    @Transactional
+    public Formation rejectCourse(Formation formation, Utilisateur admin, String motif) {
+        if (isBlank(motif)) {
+            throw new IllegalArgumentException("Le motif de rejet est obligatoire");
+        }
+
+        StatutFormation ancienStatut = formation.getStatut();
+        formation.setStatut(StatutFormation.rejete);
+        formation.setMotifRejet(motif);
+        formation = formationRepository.save(formation);
+
+        enregistrerDecision(formation, admin, StatutFormation.rejete, motif);
+        notifyStatusChange(formation, ancienStatut, TypeNotification.formationRejetee,
+                "Votre formation a été rejetée",
+                "Votre formation \"" + formation.getTitre() + "\" a été rejetée. Motif : " + motif);
+
+        return formation;
+    }
+
+    /**
+     * T-B-214 : demande une correction — statut CORRECTION_DEMANDEE,
+     * commentaire obligatoire, notification au formateur.
+     */
+    @Transactional
+    public Formation requestCorrection(Formation formation, Utilisateur admin, String commentaire) {
+        if (isBlank(commentaire)) {
+            throw new IllegalArgumentException("Le commentaire de correction est obligatoire");
+        }
+
+        StatutFormation ancienStatut = formation.getStatut();
+        formation.setStatut(StatutFormation.correctionDemandee);
+        formation.setMotifRejet(commentaire);
+        formation = formationRepository.save(formation);
+
+        enregistrerDecision(formation, admin, StatutFormation.correctionDemandee, commentaire);
+        notifyStatusChange(formation, ancienStatut, TypeNotification.formationCorrectionDemandee,
+                "Une correction est demandée sur votre formation",
+                "Une correction est demandée sur votre formation \"" + formation.getTitre() + "\". Commentaire : " + commentaire);
+
+        return formation;
+    }
+
+    /**
+     * Enregistre la décision dans validationFormations (qui / quand /
+     * quoi), critère d'acceptation commun à T-B-205 et T-B-214.
+     */
+    private void enregistrerDecision(Formation formation, Utilisateur admin, StatutFormation decision, String commentaire) {
+        ValidationFormation validation = ValidationFormation.builder()
+                .formation(formation)
+                .moderateur(admin)
+                .decision(decision)
+                .commentaire(commentaire)
+                .build();
+        validationFormationRepository.save(validation);
+    }
+
+    /**
+     * Déclenche la notification au formateur propriétaire de la
+     * formation. Implémentée depuis que le module Admin (V9,
+     * "notifications") existe — cf. NotificationService pour la
+     * politique best-effort d'envoi.
+     */
+    private void notifyStatusChange(Formation formation, StatutFormation ancienStatut,
+                                     TypeNotification type, String titre, String message) {
+        Utilisateur formateur = formation.getCentre() != null ? formation.getCentre().getUtilisateur() : null;
+        if (formateur == null) {
+            return;
+        }
+        notificationService.creerEtEnvoyer(formateur, type, titre, message, Map.of(
+                "destinataire", String.valueOf(formateur.getEmail()),
+                "typeNotif", type.name(),
+                "formationTitre", String.valueOf(formation.getTitre()),
+                "ancienStatut", String.valueOf(ancienStatut),
+                "nouveauStatut", String.valueOf(formation.getStatut())
+        ));
+    }
+
+    /**
+     * Conservée pour compatibilité de signature avec T-B-114
+     * (module Formateur), qui ne passait que la formation. Les
+     * nouvelles méthodes de T-B-214 appellent la variante privée
+     * ci-dessus avec le contexte complet (ancien statut, type,
+     * message) — préférer approveCourse/rejectCourse/requestCorrection.
      */
     public void notifyStatusChange(Formation formation) {
-        throw new UnsupportedOperationException(
-                "Notification de changement de statut non implémentée : dépend du module "
-                        + "Admin/Commercial (table notifications, service email Node.js), hors périmètre "
-                        + "du module Formateur. À brancher une fois ce module disponible.");
+        TypeNotification type = switch (formation.getStatut()) {
+            case approuve -> TypeNotification.formationApprouvee;
+            case rejete -> TypeNotification.formationRejetee;
+            case correctionDemandee -> TypeNotification.formationCorrectionDemandee;
+            default -> TypeNotification.systeme;
+        };
+        notifyStatusChange(formation, null, type,
+                "Mise à jour de votre formation",
+                "Le statut de votre formation \"" + formation.getTitre() + "\" a changé : " + formation.getStatut());
     }
 
     private boolean isBlank(String value) {

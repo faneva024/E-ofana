@@ -20,27 +20,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * T-B-115 : reconnaît les tokens émis par /api/v1/auth/connexion et
- * /api/v1/auth-formateur/connexion, et alimente le SecurityContext
- * Spring avec l'autorité correspondant au rôle réel de l'utilisateur
- * (ROLE_FORMATEUR, ROLE_APPRENANT, ...).
+ * T-B-115 (module Formateur) + T-B-215 (module Admin) : reconnaît les
+ * tokens émis par /api/v1/auth/connexion, /api/v1/auth-formateur/connexion
+ * ET /api/v1/auth-admin/connexion (T-B-204), et alimente le
+ * SecurityContext Spring avec l'autorité correspondant au rôle réel
+ * de l'utilisateur (ROLE_FORMATEUR, ROLE_APPRENANT, ROLE_ADMIN, ...).
  *
  * ⚠ Ce projet n'a PAS de JwtAuthenticationFilter existant à étendre
  * (aucune infrastructure JWT n'a été posée en Semaine 1 — voir
  * SecurityFilterConfig, qui laissait explicitement toutes les routes
  * ouvertes "en attendant JWT"). Ce filtre est donc un pont temporaire
  * qui reconnaît le format "TOKEN-DEMO-{idUser}" /
- * "TOKEN-DEMO-FORMATEUR-{idUser}" déjà émis par AuthController — PAS
- * un vrai JWT signé. Un token de démo n'a aucune valeur de sécurité
- * réelle (pas de signature, pas d'expiration) : à remplacer par un
- * vrai JwtService dès que ce chantier sera repris.
+ * "TOKEN-DEMO-FORMATEUR-{idUser}" / "TOKEN-DEMO-ADMIN-{idUser}" déjà
+ * émis par AuthController/AdminAuthController — PAS un vrai JWT
+ * signé. Un token de démo n'a aucune valeur de sécurité réelle (pas
+ * de signature, pas d'expiration) : à remplacer par un vrai
+ * JwtService dès que ce chantier sera repris.
+ *
+ * Note de conception T-B-215 : le mapping "ROLE_" + role.name() était
+ * DÉJÀ générique sur RoleUtilisateur (aucun changement nécessaire là) —
+ * seul le pattern regex, qui ne reconnaissait que le préfixe
+ * "FORMATEUR-", devait être étendu pour accepter "ADMIN-" également.
  */
 @Component
 @RequiredArgsConstructor
 public class DemoTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Pattern PATTERN_TOKEN =
-            Pattern.compile("^TOKEN-DEMO-(?:FORMATEUR-)?(\\d+)$");
+            Pattern.compile("^TOKEN-DEMO-(?:FORMATEUR-|ADMIN-)?(\\d+)$");
 
     private final UtilisateurRepository utilisateurRepository;
 

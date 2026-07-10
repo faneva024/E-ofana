@@ -16,4 +16,12 @@ public interface DemandeModificationCentreRepository extends JpaRepository<Deman
 
     /** Historique complet des demandes d'un centre, plus récentes en premier. */
     List<DemandeModificationCentre> findByCentreIdCentreOrderByCreatedAtDesc(Long idCentre);
+
+    /**
+     * T-B-206 : toutes les demandes en attente, tous centres confondus
+     * — c'est la liste que voit l'admin (getPendingProfileRequests),
+     * contrairement à findByCentreIdCentreAndStatut ci-dessus qui est
+     * scopée à un centre.
+     */
+    List<DemandeModificationCentre> findByStatutOrderByCreatedAtAsc(StatutModification statut);
 }

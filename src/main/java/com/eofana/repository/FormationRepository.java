@@ -1,5 +1,6 @@
 package com.eofana.repository;
 
+import com.eofana.entity.Categorie;
 import com.eofana.entity.Formation;
 import com.eofana.enums.StatutFormation;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,6 +31,14 @@ public interface FormationRepository extends JpaRepository<Formation, Long> {
      * ci-dessous, qui s'appuie sur un vrai JOIN.
      */
     List<Formation> findByStatut(StatutFormation statut);
+
+    /**
+     * Variante paginée de findByStatut(), pour T-B-205
+     * (FormationValidationController#getPendingCourses) qui a besoin
+     * d'une liste paginée des formations en attente/correction
+     * demandée plutôt que de tout charger en mémoire.
+     */
+    org.springframework.data.domain.Page<Formation> findByStatut(StatutFormation statut, org.springframework.data.domain.Pageable pageable);
 
     /**
      * Variante plus fidèle à l'intention métier du ticket : formations
@@ -149,4 +158,84 @@ public interface FormationRepository extends JpaRepository<Formation, Long> {
                   @@ to_tsquery('french', :motsCles)
             """, nativeQuery = true)
     List<Formation> rechercherParMotsCles(@Param("motsCles") String motsCles);
+
+    // -----------------------------------------------------------
+    // T-B-203 : méthodes statistiques pour AdminStatsService (T-B-212),
+    // AdminDashboardController (T-B-209) et AdminStatsFilterController
+    // (T-B-210).
+    // -----------------------------------------------------------
+
+    /** Nombre de formations par statut (publiées/en attente/rejetées, tableau de bord global). */
+    long countByStatut(StatutFormation statut);
+
+    /**
+     * Nombre de formations par statut ET catégorie. Signature imposée
+     * par le ticket : "countByStatutAndCategorie" — Spring Data
+     * accepte directement l'entité Categorie en paramètre (pas besoin
+     * de suffixe "_IdCategorie") car "categorie" est une relation
+     * directe de Formation.
+     */
+    long countByStatutAndCategorie(StatutFormation statut, Categorie categorie);
+
+    /**
+     * Surcharge pratique par id plutôt que par entité complète
+     * (évite d'avoir à charger/instancier un Categorie juste pour
+     * filtrer) — utilisée par AdminStatsService#getFilteredStats.
+     */
+    long countByStatutAndCategorie_IdCategorie(StatutFormation statut, Long idCategorie);
+
+    /**
+     * Chiffre d'affaires E-ofana (somme des commissions) sur les
+     * inscriptions validées entre deux dates. Requête native : comme
+     * countInscriptionsBySession ci-dessus, "Inscription" n'est pas
+     * une entité JPA dans ce projet (cf. InscriptionController,
+     * JdbcTemplate), donc pas de JOIN JPQL possible ici.
+     */
+    @Query(value = """
+            SELECT COALESCE(SUM(i."commission"), 0)
+            FROM eofana.inscriptions i
+            JOIN eofana."sessionsFormation" s ON s."idSession" = i."idSession"
+            WHERE i."statut" = 'valide'
+              AND i."createdAt" >= :debut
+              AND i."createdAt" < :finExclusive
+            """, nativeQuery = true)
+    long sumRevenueByPeriode(@Param("debut") java.time.OffsetDateTime debut,
+                              @Param("finExclusive") java.time.OffsetDateTime finExclusive);
+
+    /**
+     * Répartition du nombre de formations par ville du centre.
+     * Projection d'interface Spring Data (pas de DTO à instancier
+     * manuellement) : les alias JPQL "ville"/"total" sont mappés
+     * automatiquement sur getVille()/getTotal().
+     */
+    @Query("""
+            SELECT f.centre.ville AS ville, COUNT(f) AS total
+            FROM Formation f
+            GROUP BY f.centre.ville
+            ORDER BY total DESC
+            """)
+    List<VilleStat> groupByVille();
+
+    /** Répartition du nombre de formations par catégorie. */
+    @Query("""
+            SELECT f.categorie.idCategorie AS idCategorie, f.categorie.nom AS nom, COUNT(f) AS total
+            FROM Formation f
+            WHERE f.categorie IS NOT NULL
+            GROUP BY f.categorie.idCategorie, f.categorie.nom
+            ORDER BY total DESC
+            """)
+    List<CategorieStat> groupByCategorie();
+
+    /** Projection pour groupByVille(). */
+    interface VilleStat {
+        String getVille();
+        Long getTotal();
+    }
+
+    /** Projection pour groupByCategorie(). */
+    interface CategorieStat {
+        Long getIdCategorie();
+        String getNom();
+        Long getTotal();
+    }
 }
