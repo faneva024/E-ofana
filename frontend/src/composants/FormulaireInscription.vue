@@ -230,16 +230,28 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../api/axios'
 
 const router = useRouter()
+const route = useRoute()
 
 const props = defineProps({
   formation: {
     type: Object,
-    default: () => ({ id: 1, titre: 'Formation', ecole: 'École', ville: 'Ville', prix: 0, dateDebut: '', dateFin: '' })
+    default: () => ({
+      id: 1,
+      idFormation: 1,
+      titre: 'Formation',
+      ecole: 'École',
+      centre: 'École',
+      ville: 'Ville',
+      prix: 0,
+      prixRemise: 0,
+      dateDebut: '',
+      dateFin: ''
+    })
   }
 })
 
@@ -250,34 +262,146 @@ const operateur = ref('')
 const success = ref(false)
 const redirectCountdown = ref(3)
 
+const idInscription = ref(null)
+
+const formation = ref({
+  id: props.formation.id || props.formation.idFormation || 1,
+  idFormation: props.formation.idFormation || props.formation.id || 1,
+  titre: props.formation.titre || 'Formation',
+  ecole: props.formation.ecole || props.formation.centre || 'École',
+  centre: props.formation.centre || props.formation.ecole || 'École',
+  ville: props.formation.ville || props.formation.lieu || 'Ville',
+  prix: Number(props.formation.prixRemise || props.formation.prix || 0),
+  dateDebut: props.formation.dateDebut || '',
+  dateFin: props.formation.dateFin || ''
+})
+
 const steps = [
-  { title: 'Choix de l\'opérateur Mobile Money', subtitle: 'Sélectionnez votre opérateur pour effectuer le paiement' },
-  { title: 'Confirmation du montant', subtitle: 'Vérifiez le montant final avant de payer' },
-  { title: 'Attente du paiement', subtitle: 'Confirmez le paiement depuis votre téléphone' }
+  {
+    title: "Choix de l'opérateur Mobile Money",
+    subtitle: "Sélectionnez votre opérateur pour effectuer le paiement"
+  },
+  {
+    title: 'Confirmation du montant',
+    subtitle: 'Vérifiez le montant final avant de payer'
+  },
+  {
+    title: 'Attente du paiement',
+    subtitle: 'Confirmez le paiement depuis votre téléphone'
+  }
 ]
 
 const operateurLabel = computed(() => {
-  const labels = { 'mvola': 'Mvola', 'orange-money': 'Orange Money', 'airtel-money': 'Airtel Money' }
+  const labels = {
+    mvola: 'Mvola',
+    'orange-money': 'Orange Money',
+    'airtel-money': 'Airtel Money'
+  }
+
   return labels[operateur.value] || operateur.value
 })
 
+const operateurBackend = computed(() => {
+  if (operateur.value === 'orange-money') return 'orange'
+  if (operateur.value === 'airtel-money') return 'airtel'
+  return 'mvola'
+})
+
 const reduction = computed(() => {
-  return Math.round(props.formation.prix * 0.05)
+  return Math.round(Number(formation.value.prix || 0) * 0.05)
 })
 
 const montantFinal = computed(() => {
-  return props.formation.prix - reduction.value
+  const montant = Number(formation.value.prix || 0) - reduction.value
+  return montant > 0 ? montant : Number(formation.value.prix || 0)
 })
 
 const stepBarWidth = computed(() => {
-  return ((currentStep.value) / (steps.length - 1)) * 100 + '%'
+  return (currentStep.value / (steps.length - 1)) * 100 + '%'
 })
 
 const formatPrice = (value) => {
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  return Number(value || 0).toLocaleString('fr-FR')
 }
 
-// Countdown (5 minutes)
+const getUtilisateurConnecte = () => {
+  const auth = localStorage.getItem('auth')
+  const utilisateur = localStorage.getItem('utilisateur')
+
+  if (auth) {
+    try {
+      const parsed = JSON.parse(auth)
+      if (parsed?.user) return parsed.user
+    } catch (e) {
+      console.error('Erreur lecture auth', e)
+    }
+  }
+
+  if (utilisateur) {
+    try {
+      return JSON.parse(utilisateur)
+    } catch (e) {
+      console.error('Erreur lecture utilisateur', e)
+    }
+  }
+
+  return null
+}
+
+const getIdUser = () => {
+  const utilisateur = getUtilisateurConnecte()
+
+  if (utilisateur?.idUser) return Number(utilisateur.idUser)
+  if (utilisateur?.id) return Number(utilisateur.id)
+
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken')
+
+  if (token && token.startsWith('TOKEN-DEMO-')) {
+    const id = Number(token.replace('TOKEN-DEMO-', ''))
+    if (!Number.isNaN(id)) return id
+  }
+
+  // Test local avec apprenant@test.com
+  return 1
+}
+
+const getIdFormation = () => {
+  if (route.query.formationId) return Number(route.query.formationId)
+  if (route.query.idFormation) return Number(route.query.idFormation)
+
+  const saved =
+    localStorage.getItem('formationAInscrire') ||
+    localStorage.getItem('selectedFormationId')
+
+  if (saved) return Number(saved)
+
+  return Number(formation.value.idFormation || formation.value.id || 1)
+}
+
+const chargerFormation = async () => {
+  try {
+    const idFormation = getIdFormation()
+
+    const response = await api.get(`/formations/${idFormation}`)
+    const data = response.data
+
+    formation.value = {
+      id: data.idFormation || data.id || idFormation,
+      idFormation: data.idFormation || data.id || idFormation,
+      titre: data.titre || 'Formation',
+      ecole: data.centre || data.ecole || 'École',
+      centre: data.centre || data.ecole || 'École',
+      ville: data.ville || data.lieu || 'Ville',
+      prix: Number(data.prixRemise || data.prix || 0),
+      dateDebut: data.dateDebut || '',
+      dateFin: data.dateFin || ''
+    }
+  } catch (err) {
+    console.error('Erreur chargement formation', err)
+  }
+}
+
+// Countdown 5 minutes
 const COUNTDOWN_SECONDS = 300
 const countdownRemaining = ref(COUNTDOWN_SECONDS)
 let countdownInterval = null
@@ -290,14 +414,17 @@ const countdownOffset = computed(() => {
 const formattedTime = computed(() => {
   const min = Math.floor(countdownRemaining.value / 60)
   const sec = countdownRemaining.value % 60
+
   return `${min}:${sec.toString().padStart(2, '0')}`
 })
 
 function startCountdown() {
   stopCountdown()
   countdownRemaining.value = COUNTDOWN_SECONDS
+
   countdownInterval = setInterval(() => {
     countdownRemaining.value--
+
     if (countdownRemaining.value <= 0) {
       stopCountdown()
       apiError.value = 'Le délai de paiement a expiré. Veuillez réessayer.'
@@ -312,13 +439,14 @@ function stopCountdown() {
   }
 }
 
-// Redirect countdown for success
 let redirectInterval = null
 
 function startRedirectCountdown() {
   redirectCountdown.value = 3
+
   redirectInterval = setInterval(() => {
     redirectCountdown.value--
+
     if (redirectCountdown.value <= 0) {
       clearInterval(redirectInterval)
       redirectInterval = null
@@ -327,20 +455,26 @@ function startRedirectCountdown() {
   }, 1000)
 }
 
-// reset quand le composant est monté
-currentStep.value = 0
+onMounted(() => {
+  chargerFormation()
+})
 
 onBeforeUnmount(() => {
   stopCountdown()
-  if (redirectInterval) clearInterval(redirectInterval)
+
+  if (redirectInterval) {
+    clearInterval(redirectInterval)
+  }
 })
 
 const nextStep = () => {
   apiError.value = ''
+
   if (!operateur.value) {
     apiError.value = 'Veuillez sélectionner un opérateur Mobile Money.'
     return
   }
+
   currentStep.value++
 }
 
@@ -354,16 +488,40 @@ const handleSubmit = async () => {
   submitting.value = true
 
   try {
-    const payload = {
-      formationId: props.formation.id,
-      operateur: operateur.value,
-      montant: montantFinal.value
+    const idUser = getIdUser()
+    const idFormation = Number(formation.value.idFormation || formation.value.id)
+
+    if (!idUser) {
+      apiError.value = "L'utilisateur est obligatoire."
+      return
     }
-    await api.post('/inscriptions/inscrire', payload)
+
+    if (!idFormation) {
+      apiError.value = 'La formation est obligatoire.'
+      return
+    }
+
+    const inscriptionResponse = await api.post('/inscriptions/inscrire', {
+      idUser,
+      idFormation
+    })
+
+    idInscription.value =
+      inscriptionResponse.data?.idInscription ||
+      inscriptionResponse.data?.inscription?.idInscription
+
+    if (!idInscription.value) {
+      throw new Error("L'inscription a été créée mais l'idInscription est introuvable.")
+    }
+
     currentStep.value++
     startCountdown()
   } catch (err) {
-    apiError.value = err.response?.data?.message || err.message || 'Une erreur est survenue. Veuillez réessayer.'
+    console.error('Erreur inscription', err)
+    apiError.value =
+      err.response?.data?.message ||
+      err.message ||
+      "Erreur lors de l'inscription."
   } finally {
     submitting.value = false
   }
@@ -374,17 +532,27 @@ const confirmPayment = async () => {
   submitting.value = true
 
   try {
-    const payload = {
-      formationId: props.formation.id,
-      operateur: operateur.value,
-      montant: montantFinal.value
+    if (!idInscription.value) {
+      apiError.value = 'Aucune inscription trouvée pour le paiement.'
+      return
     }
-    await api.post('/inscriptions/confirmer-paiement', payload)
+
+    await api.post('/paiements/payer', {
+      idInscription: idInscription.value,
+      montant: montantFinal.value,
+      operateur: operateurBackend.value,
+      numeroTransaction: `TXN-${Date.now()}`
+    })
+
     stopCountdown()
     success.value = true
     startRedirectCountdown()
   } catch (err) {
-    apiError.value = err.response?.data?.message || err.message || 'Une erreur est survenue. Veuillez réessayer.'
+    console.error('Erreur paiement', err)
+    apiError.value =
+      err.response?.data?.message ||
+      err.message ||
+      'Erreur lors du paiement.'
   } finally {
     submitting.value = false
   }
@@ -392,30 +560,33 @@ const confirmPayment = async () => {
 
 const cancelPayment = async () => {
   stopCountdown()
-  try {
-    await api.post('/inscriptions/annuler-paiement', {
-      formationId: props.formation.id
-    })
-  } catch (e) {
-    // silent
-  }
   close()
 }
 
 const downloadRecu = async () => {
   try {
-    const response = await api.get(`/inscriptions/${props.formation.id}/recu`, {
+    if (!idInscription.value) {
+      apiError.value = 'Aucune inscription trouvée pour le reçu.'
+      return
+    }
+
+    const response = await api.get(`/inscriptions/${idInscription.value}/recu`, {
       responseType: 'blob'
     })
+
     const url = URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
+
     link.href = url
-    link.setAttribute('download', `recu-inscription-${props.formation.id}.pdf`)
+    link.setAttribute('download', `recu-inscription-${idInscription.value}.pdf`)
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+
     URL.revokeObjectURL(url)
   } catch (err) {
+    console.error('Erreur reçu PDF', err)
     apiError.value = 'Erreur lors du téléchargement du reçu.'
   }
 }

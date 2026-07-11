@@ -104,96 +104,130 @@
           <div class="col-lg-9">
             <!-- Overview Tab -->
             <div v-if="activeTab === 'overview'" class="content-section">
-              <div class="stats-grid">
-                <div class="stat-card">
-                  <div class="stat-icon courses">
-                    <i class="bi bi-book-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">3</h3>
-                    <p class="stat-label">Formations en cours</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon completed">
-                    <i class="bi bi-check-circle-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">12</h3>
-                    <p class="stat-label">Formations terminées</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon certificates">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">8</h3>
-                    <p class="stat-label">Certificats obtenus</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon hours">
-                    <i class="bi bi-clock-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">45h</h3>
-                    <p class="stat-label">Temps de formation</p>
-                  </div>
-                </div>
-              </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon courses">
+        <i class="bi bi-book-fill"></i>
+      </div>
 
-              <div class="recent-activity">
-                <h3 class="section-title">
-                  <i class="bi bi-clock-history me-2"></i>
-                  Activité récente
-                </h3>
-                <div class="activity-list">
-                  <div class="activity-item">
-                    <div class="activity-icon">
-                      <i class="bi bi-play-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Développement Web avec Vue.js</h4>
-                      <p class="activity-meta">Il y a 2 heures • Leçon 5/20</p>
-                    </div>
-                    <div class="activity-progress">
-                      <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: 25%"></div>
-                      </div>
-                      <small>25%</small>
-                    </div>
-                  </div>
-                  <div class="activity-item">
-                    <div class="activity-icon">
-                      <i class="bi bi-play-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Introduction à Python</h4>
-                      <p class="activity-meta">Hier • Leçon 12/15</p>
-                    </div>
-                    <div class="activity-progress">
-                      <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: 80%"></div>
-                      </div>
-                      <small>80%</small>
-                    </div>
-                  </div>
-                  <div class="activity-item">
-                    <div class="activity-icon completed">
-                      <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Bases de JavaScript</h4>
-                      <p class="activity-meta">Il y a 3 jours • Terminé</p>
-                    </div>
-                    <div class="activity-badge">
-                      <span class="badge bg-success">Certificat</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.formationsEnCours }}</h3>
+        <p class="stat-label">Formations en cours</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.formationsTerminees }}</h3>
+        <p class="stat-label">Formations terminées</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon certificates">
+        <i class="bi bi-award-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.certificats }}</h3>
+        <p class="stat-label">Certificats obtenus</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon hours">
+        <i class="bi bi-clock-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.tempsFormation }}</h3>
+        <p class="stat-label">Temps de formation</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="recent-activity">
+    <h3 class="section-title">
+      <i class="bi bi-clock-history me-2"></i>
+      Activité récente
+    </h3>
+
+    <div v-if="inscriptions.length === 0" class="activity-list">
+      <div class="activity-item">
+        <div class="activity-icon">
+          <i class="bi bi-info-circle-fill"></i>
+        </div>
+
+        <div class="activity-content">
+          <h4 class="activity-title">Aucune activité récente</h4>
+          <p class="activity-meta">
+            Vos activités apparaîtront ici après une inscription.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="activity-list">
+      <div
+        v-for="inscription in inscriptions.slice(0, 3)"
+        :key="inscription.id"
+        class="activity-item"
+      >
+        <div
+          class="activity-icon"
+          :class="{ completed: inscription.statut === 'termine' }"
+        >
+          <i
+            v-if="inscription.statut === 'termine'"
+            class="bi bi-check-circle-fill"
+          ></i>
+
+          <i
+            v-else
+            class="bi bi-play-circle-fill"
+          ></i>
+        </div>
+
+        <div class="activity-content">
+          <h4 class="activity-title">
+            {{ inscription.formation }}
+          </h4>
+
+          <p class="activity-meta">
+            {{ formatDate(inscription.date) }}
+            •
+            {{ getStatusLabel(inscription.statut) }}
+          </p>
+        </div>
+
+        <div
+          v-if="inscription.statut === 'termine'"
+          class="activity-badge"
+        >
+          <span class="badge bg-success">Terminé</span>
+        </div>
+
+        <div
+          v-else
+          class="activity-progress"
+        >
+          <div class="progress" style="height: 6px;">
+            <div
+              class="progress-bar"
+              :style="{ width: `${inscription.progression || 0}%` }"
+            ></div>
+          </div>
+
+          <small>{{ inscription.progression || 0 }}%</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
             <!-- Inscriptions Tab -->
             <div v-if="activeTab === 'inscriptions'" class="content-section">
@@ -391,42 +425,53 @@
               </div>
             </div>
 
-            <!-- Certificates Tab -->
-            <div v-if="activeTab === 'certificates'" class="content-section">
-              <h3 class="section-title">
-                <i class="bi bi-award-fill me-2"></i>
-                Mes certificats
-              </h3>
-              <div class="certificates-grid">
-                <div class="certificate-card">
-                  <div class="certificate-icon">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="certificate-content">
-                    <h4 class="certificate-title">Bases de JavaScript</h4>
-                    <p class="certificate-date">Obtenu le 15 Janvier 2026</p>
-                    <button class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>
-                      Télécharger
-                    </button>
-                  </div>
-                </div>
-                <div class="certificate-card">
-                  <div class="certificate-icon">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="certificate-content">
-                    <h4 class="certificate-title">HTML & CSS Fundamentals</h4>
-                    <p class="certificate-date">Obtenu le 10 Décembre 2025</p>
-                    <button class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>
-                      Télécharger
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+           <!-- Certificats -->
+<div v-if="activeTab === 'certificates'" class="content-card">
+  <h2 class="section-title">
+    <i class="bi bi-award-fill me-2"></i>
+    Mes certificats
+  </h2>
 
+  <div v-if="certificats.length === 0" class="empty-state">
+    <div class="empty-icon">
+      <i class="bi bi-award-fill"></i>
+    </div>
+
+    <h3>Aucun certificat disponible</h3>
+
+    <p>
+      Vos certificats apparaîtront ici après avoir terminé une formation.
+    </p>
+  </div>
+
+  <div v-else class="certificates-grid">
+    <div
+      v-for="certificat in certificats"
+      :key="certificat.id"
+      class="certificate-card"
+    >
+      <div class="certificate-icon">
+        <i class="bi bi-award-fill"></i>
+      </div>
+
+      <div class="certificate-info">
+        <h3>{{ certificat.formation }}</h3>
+
+        <p>
+          Obtenu le {{ formatDate(certificat.dateObtention) }}
+        </p>
+
+        <button
+          class="btn-download"
+          @click="downloadCertificat(certificat)"
+        >
+          <i class="bi bi-download me-2"></i>
+          Télécharger
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
             <!-- Profile Tab -->
             <div v-if="activeTab === 'profile'" class="content-section">
               <h3 class="section-title">
@@ -569,15 +614,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import axios from 'axios'
+import {
+  getMesInscriptions,
+  getMesRecus,
+  getMesStats,
+  getMesCertificats,
+  telechargerRecuApprenant
+} from '../api/apprenantEspace'
+
+console.log('✅ MON ESPACE RACINE DYNAMIQUE CHARGÉ')
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref('overview')
+const activeTab = ref('inscriptions')
 const editing = ref(false)
 const submitting = ref(false)
 const apiError = ref('')
@@ -586,7 +639,16 @@ const loadingInscriptions = ref(false)
 const loadingRecus = ref(false)
 const loadingProfile = ref(false)
 
-const profileErrors = ref({})
+const errors = ref({})
+
+const stats = ref({
+  totalInscriptions: 0,
+  formationsEnCours: 0,
+  formationsTerminees: 0,
+  certificats: 0,
+  tempsFormation: '0h',
+  totalPaye: 0
+})
 
 const editForm = ref({
   prenom: authStore.user?.prenom || '',
@@ -601,129 +663,347 @@ const recuFilters = ref({
   date: ''
 })
 
-const inscriptions = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    ecole: 'TechAcademy Antananarivo',
-    date: '2025-06-15',
-    statut: 'inscrit',
-    paiement_confirme: true
-  },
-  {
-    id: 2,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    ecole: 'Business School Tana',
-    date: '2025-07-01',
-    statut: 'reserve',
-    paiement_confirme: false
-  },
-  {
-    id: 3,
-    formation: "Gestion d'Exploitation Agricole",
-    ecole: 'Institut Rural Madagascar',
-    date: '2025-03-10',
-    statut: 'termine',
-    paiement_confirme: true
-  }
-])
+const inscriptions = ref([])
+const recus = ref([])
+const certificats = ref([])
 
-const recus = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    date: '2025-06-15',
-    montant: 150000,
-    reference: 'REC-2025-001',
-    methode: 'Mobile Money',
-    statut: 'paye'
-  },
-  {
-    id: 2,
-    formation: "Gestion d'Exploitation Agricole",
-    date: '2025-03-10',
-    montant: 120000,
-    reference: 'REC-2025-002',
-    methode: 'Virement bancaire',
-    statut: 'paye'
-  },
-  {
-    id: 3,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    date: '2025-07-01',
-    montant: 80000,
-    reference: 'REC-2025-003',
-    methode: 'Mobile Money',
-    statut: 'en_attente'
+const normaliserCertificat = (item) => {
+  return {
+    id: item.id || item.idCertificat || item.idInscription,
+    formation: item.formation || item.titre || 'Formation',
+    dateObtention: item.dateObtention || item.createdAt || item.date,
+    urlPdf: item.urlPdf || null
   }
-])
+}
+
+async function loadCertificats() {
+  try {
+    const idUser = getIdUser()
+    const data = await getMesCertificats(idUser)
+
+    console.log('✅ Certificats API =', data)
+
+    certificats.value = data.map(normaliserCertificat)
+  } catch (error) {
+    console.error('Erreur chargement certificats :', error)
+    certificats.value = []
+  }
+}
+
+function downloadCertificat(certificat) {
+  if (!certificat.urlPdf) {
+    alert("Le certificat n'est pas encore disponible.")
+    return
+  }
+
+  window.open(certificat.urlPdf, '_blank')
+}
+
+const getUtilisateurConnecte = () => {
+  if (authStore.user) {
+    return authStore.user
+  }
+
+  const auth = localStorage.getItem('auth')
+  const utilisateur = localStorage.getItem('utilisateur')
+
+  if (auth) {
+    try {
+      const parsed = JSON.parse(auth)
+
+      if (parsed?.user) {
+        return parsed.user
+      }
+    } catch (error) {
+      console.error('Erreur lecture auth localStorage', error)
+    }
+  }
+
+  if (utilisateur) {
+    try {
+      return JSON.parse(utilisateur)
+    } catch (error) {
+      console.error('Erreur lecture utilisateur localStorage', error)
+    }
+  }
+
+  return null
+}
+
+const getIdUser = () => {
+  const utilisateur = getUtilisateurConnecte()
+
+  if (utilisateur?.idUser) {
+    return Number(utilisateur.idUser)
+  }
+
+  if (utilisateur?.id) {
+    return Number(utilisateur.id)
+  }
+
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken')
+
+  if (token && token.startsWith('TOKEN-DEMO-')) {
+    const id = Number(token.replace('TOKEN-DEMO-', ''))
+
+    if (!Number.isNaN(id)) {
+      return id
+    }
+  }
+
+  return 1
+}
+
+const initials = computed(() => {
+  const p = authStore.user?.prenom || ''
+  const n = authStore.user?.nom || ''
+
+  if (p && n) {
+    return (p[0] + n[0]).toUpperCase()
+  }
+
+  if (authStore.user?.email) {
+    return authStore.user.email[0].toUpperCase()
+  }
+
+  return 'U'
+})
 
 const displayName = computed(() => {
-  if (authStore.user) {
-    const p = authStore.user.prenom || ''
-    const n = authStore.user.nom || ''
-    if (p && n) return p + ' ' + n
-    return authStore.user.email?.split('@')[0] || 'Utilisateur'
+  const p = authStore.user?.prenom || ''
+  const n = authStore.user?.nom || ''
+
+  if (p && n) {
+    return p + ' ' + n
   }
-  return 'Utilisateur'
+
+  return authStore.user?.email?.split('@')[0] || 'Utilisateur'
 })
 
 const uniqueFormations = computed(() => {
-  return [...new Set(recus.value.map(r => r.formation))]
+  return [...new Set(recus.value.map((recu) => recu.formation))]
 })
 
 const filteredRecus = computed(() => {
-  return recus.value.filter(recu => {
-    if (recuFilters.value.formation && recu.formation !== recuFilters.value.formation) return false
-    if (recuFilters.value.date && recu.date !== recuFilters.value.date) return false
+  return recus.value.filter((recu) => {
+    if (recuFilters.value.formation && recu.formation !== recuFilters.value.formation) {
+      return false
+    }
+
+    if (recuFilters.value.date) {
+      const recuDate = toInputDate(recu.date)
+
+      if (recuDate !== recuFilters.value.date) {
+        return false
+      }
+    }
+
     return true
   })
 })
 
+const toInputDate = (date) => {
+  if (!date) {
+    return ''
+  }
+
+  const d = new Date(date)
+
+  if (Number.isNaN(d.getTime())) {
+    return ''
+  }
+
+  return d.toISOString().slice(0, 10)
+}
+
+const normaliserInscription = (item) => {
+  const statutOriginal = String(item.statut || item.statutOriginal || '').toLowerCase()
+
+  let statut = 'inscrit'
+
+  if (statutOriginal.includes('reserve')) {
+    statut = 'reserve'
+  } else if (statutOriginal.includes('termine')) {
+    statut = 'termine'
+  } else if (statutOriginal.includes('annule')) {
+    statut = 'annule'
+  } else if (statutOriginal.includes('attente')) {
+    statut = 'enAttente'
+  }
+
+  return {
+    id: item.idInscription || item.id,
+    idInscription: item.idInscription || item.id,
+    idFormation: item.idFormation,
+
+    formation: item.formation || item.titre || 'Formation',
+    ecole: item.ecole || item.centre || 'Centre',
+    centre: item.centre || item.ecole || 'Centre',
+    categorie: item.categorie || 'Formation',
+
+    date: item.date || item.createdAt || item.dateDebut,
+    statut,
+    paiement_confirme: statut !== 'enAttente',
+
+    progression: Number(item.progression || 0),
+
+    prix: Number(item.montantPaye || item.montant || item.prix || 0),
+    montant: Number(item.montantPaye || item.montant || item.prix || 0),
+
+    duree: item.duree || '',
+
+    numeroRecu: item.numeroRecu,
+    operateur: item.operateur,
+    transactionId: item.transactionId
+  }
+}
+
+const normaliserRecu = (item) => {
+  const statutOriginal = String(item.statut || item.statutOriginal || '').toLowerCase()
+
+  let statut = 'en_attente'
+
+  if (
+    statutOriginal.includes('paye') ||
+    statutOriginal.includes('payé') ||
+    statutOriginal.includes('confirme')
+  ) {
+    statut = 'paye'
+  }
+
+  return {
+    id: item.idPaiement || item.id || item.idInscription,
+    idPaiement: item.idPaiement,
+    idInscription: item.idInscription,
+
+    formation: item.formation || 'Formation',
+    centre: item.centre || 'Centre',
+
+    date: item.date || item.datePaiement || item.dateInscription,
+
+    montant: Number(item.montant || 0),
+
+    reference: item.reference || item.numeroRecu || `RECU-${item.idInscription}`,
+    numeroRecu: item.numeroRecu,
+    numeroTransaction: item.numeroTransaction,
+
+    methode: item.methode || 'Mobile Money',
+    operateur: item.operateur || '',
+
+    statut
+  }
+}
+
 const getStatusClass = (statut) => {
   switch (statut) {
-    case 'inscrit': return 'bg-primary'
-    case 'reserve': return 'bg-warning'
-    case 'termine': return 'bg-success'
-    default: return 'bg-secondary'
+    case 'inscrit':
+      return 'bg-primary'
+
+    case 'reserve':
+      return 'bg-warning'
+
+    case 'termine':
+      return 'bg-success'
+
+    case 'enAttente':
+      return 'bg-warning'
+
+    case 'annule':
+      return 'bg-danger'
+
+    default:
+      return 'bg-secondary'
   }
 }
 
 const getStatusLabel = (statut) => {
   switch (statut) {
-    case 'inscrit': return 'Inscrit'
-    case 'reserve': return 'Réservé'
-    case 'termine': return 'Terminé'
-    default: return statut
+    case 'inscrit':
+      return 'Inscrit'
+
+    case 'reserve':
+      return 'Réservé'
+
+    case 'termine':
+      return 'Terminé'
+
+    case 'enAttente':
+      return 'En attente'
+
+    case 'annule':
+      return 'Annulé'
+
+    default:
+      return statut
   }
 }
 
 function formatPrice(value) {
-  return new Intl.NumberFormat('fr-FR').format(value)
+  return new Intl.NumberFormat('fr-FR').format(Number(value || 0))
 }
 
 function formatDate(date) {
-  return new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric'
+  if (!date) {
+    return '-'
+  }
+
+  const d = new Date(date)
+
+  if (Number.isNaN(d.getTime())) {
+    return date
+  }
+
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
   })
 }
 
 function viewDetails(inscription) {
-  console.log('Voir détails:', inscription.id)
+  const idFormation = inscription.idFormation || inscription.id
+
+  if (idFormation) {
+    router.push(`/formations/${idFormation}`)
+  }
 }
 
-function downloadRecu(item) {
-  console.log('Téléchargement du reçu:', item.reference || item.id)
+async function downloadRecu(item) {
+  try {
+    const idInscription = item.idInscription || item.id
+
+    if (!idInscription) {
+      alert('Aucune inscription trouvée pour ce reçu.')
+      return
+    }
+
+    await telechargerRecuApprenant(idInscription)
+  } catch (error) {
+    console.error('Erreur téléchargement reçu :', error)
+    alert('Erreur lors du téléchargement du reçu PDF.')
+  }
 }
 
 function confirmCancel(inscription) {
   if (confirm(`Êtes-vous sûr de vouloir annuler l'inscription à "${inscription.formation}" ?`)) {
-    inscriptions.value = inscriptions.value.filter(i => i.id !== inscription.id)
+    cancelInscription(inscription.id)
+  }
+}
+
+async function cancelInscription(id) {
+  try {
+    console.log('Annulation inscription non encore connectée :', id)
+    alert("L'annulation n'est pas encore connectée côté backend.")
+  } catch (error) {
+    console.error("Erreur lors de l'annulation :", error)
   }
 }
 
 function resetRecuFilters() {
-  recuFilters.value = { formation: '', date: '' }
+  recuFilters.value = {
+    formation: '',
+    date: ''
+  }
 }
 
 function toggleEdit() {
@@ -735,50 +1015,58 @@ function toggleEdit() {
       password: '',
       confirmPassword: ''
     }
+
     apiError.value = ''
-    profileErrors.value = {}
+    errors.value = {}
   }
+
   editing.value = !editing.value
 }
 
 async function saveProfile() {
   apiError.value = ''
-  profileErrors.value = {}
+  errors.value = {}
 
   if (!editForm.value.prenom.trim()) {
-    profileErrors.value.prenom = 'Le prénom est requis'
+    errors.value.prenom = 'Le prénom est requis'
     return
   }
+
   if (!editForm.value.nom.trim()) {
-    profileErrors.value.nom = 'Le nom est requis'
+    errors.value.nom = 'Le nom est requis'
     return
   }
+
   if (editForm.value.password || editForm.value.confirmPassword) {
     if (editForm.value.password.length < 6) {
-      profileErrors.value.password = 'Le mot de passe doit contenir au moins 6 caractères'
+      errors.value.password = 'Le mot de passe doit contenir au moins 6 caractères'
       return
     }
+
     if (editForm.value.password !== editForm.value.confirmPassword) {
-      profileErrors.value.confirmPassword = 'Les mots de passe ne correspondent pas'
+      errors.value.confirmPassword = 'Les mots de passe ne correspondent pas'
       return
     }
   }
 
   submitting.value = true
+
   try {
-    // TODO: API call
-    // await axios.put('/api/apprenants/profil', {
-    //   prenom: editForm.value.prenom,
-    //   nom: editForm.value.nom,
-    //   telephone: editForm.value.telephone,
-    //   password: editForm.value.password || undefined
-    // })
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     if (authStore.user) {
       authStore.user.prenom = editForm.value.prenom
       authStore.user.nom = editForm.value.nom
       authStore.user.telephone = editForm.value.telephone
+
+      localStorage.setItem('utilisateur', JSON.stringify(authStore.user))
+      localStorage.setItem(
+        'auth',
+        JSON.stringify({
+          user: authStore.user,
+          token: authStore.token || localStorage.getItem('token')
+        })
+      )
     }
 
     editing.value = false
@@ -791,19 +1079,19 @@ async function saveProfile() {
   }
 }
 
-const handleLogout = () => {
-  authStore.logout()
-}
-
 async function loadInscriptions() {
   loadingInscriptions.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/inscriptions')
-    // inscriptions.value = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const idUser = getIdUser()
+    const data = await getMesInscriptions(idUser)
+
+    console.log('✅ Inscriptions API =', data)
+
+    inscriptions.value = data.map(normaliserInscription)
   } catch (error) {
-    console.error('Erreur lors du chargement des inscriptions:', error)
+    console.error('Erreur lors du chargement des inscriptions :', error)
+    inscriptions.value = []
   } finally {
     loadingInscriptions.value = false
   }
@@ -811,27 +1099,57 @@ async function loadInscriptions() {
 
 async function loadRecus() {
   loadingRecus.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/recus')
-    // recus.value = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const idUser = getIdUser()
+    const data = await getMesRecus(idUser)
+
+    console.log('✅ Reçus API =', data)
+
+    recus.value = data.map(normaliserRecu)
   } catch (error) {
-    console.error('Erreur lors du chargement des reçus:', error)
+    console.error('Erreur lors du chargement des reçus :', error)
+    recus.value = []
   } finally {
     loadingRecus.value = false
   }
 }
 
+async function loadStats() {
+  try {
+    const idUser = getIdUser()
+    const data = await getMesStats(idUser)
+
+    console.log('✅ Stats API =', data)
+
+    stats.value = {
+      totalInscriptions: Number(data.totalInscriptions || 0),
+      formationsEnCours: Number(data.formationsEnCours || 0),
+      formationsTerminees: Number(data.formationsTerminees || 0),
+      certificats: Number(data.certificats || 0),
+      tempsFormation: data.tempsFormation || '0h',
+      totalPaye: Number(data.totalPaye || 0)
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des statistiques :', error)
+  }
+}
+
 async function loadProfile() {
   loadingProfile.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/profil')
-    // authStore.user = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const utilisateur = getUtilisateurConnecte()
+
+    if (utilisateur) {
+      editForm.value.prenom = utilisateur.prenom || ''
+      editForm.value.nom = utilisateur.nom || ''
+      editForm.value.telephone = utilisateur.telephone || ''
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
   } catch (error) {
-    console.error('Erreur lors du chargement du profil:', error)
+    console.error('Erreur lors du chargement du profil :', error)
   } finally {
     loadingProfile.value = false
   }
@@ -840,10 +1158,11 @@ async function loadProfile() {
 onMounted(() => {
   loadInscriptions()
   loadRecus()
+  loadStats()
+  loadCertificats()
   loadProfile()
 })
 </script>
-
 <style scoped>
 .mon-espace-container {
   min-height: 100vh;
