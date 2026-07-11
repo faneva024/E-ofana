@@ -50,3 +50,13 @@ export const telechargerRecuApprenant = async (idInscription) => {
 
   window.URL.revokeObjectURL(url);
 };
+
+export const getMesCertificats = async (idUser) => {
+  const response = await fetch(`${API_BASE_URL}/apprenants/${idUser}/certificats`);
+
+  if (!response.ok) {
+    throw new Error("Impossible de charger les certificats");
+  }
+
+  return await response.json();
+};

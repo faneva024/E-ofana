@@ -104,96 +104,130 @@
           <div class="col-lg-9">
             <!-- Overview Tab -->
             <div v-if="activeTab === 'overview'" class="content-section">
-              <div class="stats-grid">
-                <div class="stat-card">
-                  <div class="stat-icon courses">
-                    <i class="bi bi-book-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">3</h3>
-                    <p class="stat-label">Formations en cours</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon completed">
-                    <i class="bi bi-check-circle-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">12</h3>
-                    <p class="stat-label">Formations terminées</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon certificates">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">8</h3>
-                    <p class="stat-label">Certificats obtenus</p>
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon hours">
-                    <i class="bi bi-clock-fill"></i>
-                  </div>
-                  <div class="stat-content">
-                    <h3 class="stat-value">45h</h3>
-                    <p class="stat-label">Temps de formation</p>
-                  </div>
-                </div>
-              </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon courses">
+        <i class="bi bi-book-fill"></i>
+      </div>
 
-              <div class="recent-activity">
-                <h3 class="section-title">
-                  <i class="bi bi-clock-history me-2"></i>
-                  Activité récente
-                </h3>
-                <div class="activity-list">
-                  <div class="activity-item">
-                    <div class="activity-icon">
-                      <i class="bi bi-play-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Développement Web avec Vue.js</h4>
-                      <p class="activity-meta">Il y a 2 heures • Leçon 5/20</p>
-                    </div>
-                    <div class="activity-progress">
-                      <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: 25%"></div>
-                      </div>
-                      <small>25%</small>
-                    </div>
-                  </div>
-                  <div class="activity-item">
-                    <div class="activity-icon">
-                      <i class="bi bi-play-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Introduction à Python</h4>
-                      <p class="activity-meta">Hier • Leçon 12/15</p>
-                    </div>
-                    <div class="activity-progress">
-                      <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: 80%"></div>
-                      </div>
-                      <small>80%</small>
-                    </div>
-                  </div>
-                  <div class="activity-item">
-                    <div class="activity-icon completed">
-                      <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                    <div class="activity-content">
-                      <h4 class="activity-title">Bases de JavaScript</h4>
-                      <p class="activity-meta">Il y a 3 jours • Terminé</p>
-                    </div>
-                    <div class="activity-badge">
-                      <span class="badge bg-success">Certificat</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.formationsEnCours }}</h3>
+        <p class="stat-label">Formations en cours</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.formationsTerminees }}</h3>
+        <p class="stat-label">Formations terminées</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon certificates">
+        <i class="bi bi-award-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.certificats }}</h3>
+        <p class="stat-label">Certificats obtenus</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon hours">
+        <i class="bi bi-clock-fill"></i>
+      </div>
+
+      <div class="stat-content">
+        <h3 class="stat-value">{{ stats.tempsFormation }}</h3>
+        <p class="stat-label">Temps de formation</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="recent-activity">
+    <h3 class="section-title">
+      <i class="bi bi-clock-history me-2"></i>
+      Activité récente
+    </h3>
+
+    <div v-if="inscriptions.length === 0" class="activity-list">
+      <div class="activity-item">
+        <div class="activity-icon">
+          <i class="bi bi-info-circle-fill"></i>
+        </div>
+
+        <div class="activity-content">
+          <h4 class="activity-title">Aucune activité récente</h4>
+          <p class="activity-meta">
+            Vos activités apparaîtront ici après une inscription.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="activity-list">
+      <div
+        v-for="inscription in inscriptions.slice(0, 3)"
+        :key="inscription.id"
+        class="activity-item"
+      >
+        <div
+          class="activity-icon"
+          :class="{ completed: inscription.statut === 'termine' }"
+        >
+          <i
+            v-if="inscription.statut === 'termine'"
+            class="bi bi-check-circle-fill"
+          ></i>
+
+          <i
+            v-else
+            class="bi bi-play-circle-fill"
+          ></i>
+        </div>
+
+        <div class="activity-content">
+          <h4 class="activity-title">
+            {{ inscription.formation }}
+          </h4>
+
+          <p class="activity-meta">
+            {{ formatDate(inscription.date) }}
+            •
+            {{ getStatusLabel(inscription.statut) }}
+          </p>
+        </div>
+
+        <div
+          v-if="inscription.statut === 'termine'"
+          class="activity-badge"
+        >
+          <span class="badge bg-success">Terminé</span>
+        </div>
+
+        <div
+          v-else
+          class="activity-progress"
+        >
+          <div class="progress" style="height: 6px;">
+            <div
+              class="progress-bar"
+              :style="{ width: `${inscription.progression || 0}%` }"
+            ></div>
+          </div>
+
+          <small>{{ inscription.progression || 0 }}%</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
             <!-- Inscriptions Tab -->
             <div v-if="activeTab === 'inscriptions'" class="content-section">
@@ -391,42 +425,53 @@
               </div>
             </div>
 
-            <!-- Certificates Tab -->
-            <div v-if="activeTab === 'certificates'" class="content-section">
-              <h3 class="section-title">
-                <i class="bi bi-award-fill me-2"></i>
-                Mes certificats
-              </h3>
-              <div class="certificates-grid">
-                <div class="certificate-card">
-                  <div class="certificate-icon">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="certificate-content">
-                    <h4 class="certificate-title">Bases de JavaScript</h4>
-                    <p class="certificate-date">Obtenu le 15 Janvier 2026</p>
-                    <button class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>
-                      Télécharger
-                    </button>
-                  </div>
-                </div>
-                <div class="certificate-card">
-                  <div class="certificate-icon">
-                    <i class="bi bi-award-fill"></i>
-                  </div>
-                  <div class="certificate-content">
-                    <h4 class="certificate-title">HTML & CSS Fundamentals</h4>
-                    <p class="certificate-date">Obtenu le 10 Décembre 2025</p>
-                    <button class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>
-                      Télécharger
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+           <!-- Certificats -->
+<div v-if="activeTab === 'certificates'" class="content-card">
+  <h2 class="section-title">
+    <i class="bi bi-award-fill me-2"></i>
+    Mes certificats
+  </h2>
 
+  <div v-if="certificats.length === 0" class="empty-state">
+    <div class="empty-icon">
+      <i class="bi bi-award-fill"></i>
+    </div>
+
+    <h3>Aucun certificat disponible</h3>
+
+    <p>
+      Vos certificats apparaîtront ici après avoir terminé une formation.
+    </p>
+  </div>
+
+  <div v-else class="certificates-grid">
+    <div
+      v-for="certificat in certificats"
+      :key="certificat.id"
+      class="certificate-card"
+    >
+      <div class="certificate-icon">
+        <i class="bi bi-award-fill"></i>
+      </div>
+
+      <div class="certificate-info">
+        <h3>{{ certificat.formation }}</h3>
+
+        <p>
+          Obtenu le {{ formatDate(certificat.dateObtention) }}
+        </p>
+
+        <button
+          class="btn-download"
+          @click="downloadCertificat(certificat)"
+        >
+          <i class="bi bi-download me-2"></i>
+          Télécharger
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
             <!-- Profile Tab -->
             <div v-if="activeTab === 'profile'" class="content-section">
               <h3 class="section-title">
@@ -576,6 +621,7 @@ import {
   getMesInscriptions,
   getMesRecus,
   getMesStats,
+  getMesCertificats,
   telechargerRecuApprenant
 } from '../api/apprenantEspace'
 
@@ -619,6 +665,39 @@ const recuFilters = ref({
 
 const inscriptions = ref([])
 const recus = ref([])
+const certificats = ref([])
+
+const normaliserCertificat = (item) => {
+  return {
+    id: item.id || item.idCertificat || item.idInscription,
+    formation: item.formation || item.titre || 'Formation',
+    dateObtention: item.dateObtention || item.createdAt || item.date,
+    urlPdf: item.urlPdf || null
+  }
+}
+
+async function loadCertificats() {
+  try {
+    const idUser = getIdUser()
+    const data = await getMesCertificats(idUser)
+
+    console.log('✅ Certificats API =', data)
+
+    certificats.value = data.map(normaliserCertificat)
+  } catch (error) {
+    console.error('Erreur chargement certificats :', error)
+    certificats.value = []
+  }
+}
+
+function downloadCertificat(certificat) {
+  if (!certificat.urlPdf) {
+    alert("Le certificat n'est pas encore disponible.")
+    return
+  }
+
+  window.open(certificat.urlPdf, '_blank')
+}
 
 const getUtilisateurConnecte = () => {
   if (authStore.user) {
@@ -1080,6 +1159,7 @@ onMounted(() => {
   loadInscriptions()
   loadRecus()
   loadStats()
+  loadCertificats()
   loadProfile()
 })
 </script>
