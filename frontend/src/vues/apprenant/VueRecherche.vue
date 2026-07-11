@@ -183,10 +183,48 @@ const results = ref([]);
 const allResults = ref([]);
 const loading = ref(false);
 
+const getCategoryKey = (category) => {
+  const value = String(category || "").toLowerCase();
+
+  if (value.includes("développement") || value.includes("developpement")) {
+    return "dev";
+  }
+
+  if (value.includes("design")) {
+    return "design";
+  }
+
+  if (value.includes("marketing")) {
+    return "marketing";
+  }
+
+  if (value.includes("data")) {
+    return "data";
+  }
+
+  if (value.includes("business")) {
+    return "business";
+  }
+
+  if (value.includes("langue")) {
+    return "langues";
+  }
+
+  if (value.includes("soft")) {
+    return "soft-skills";
+  }
+
+  return value;
+};
+
 const hasActiveFilters = computed(() => {
   return Object.keys(activeFilters.value).some((key) => {
     const value = activeFilters.value[key];
-    if (Array.isArray(value)) return value.length > 0;
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
     return value !== "" && value !== false && value !== null && value !== undefined;
   });
 });
@@ -198,12 +236,14 @@ const totalPages = computed(() => {
 const paginatedResults = computed(() => {
   const start = (currentPage.value - 1) * resultsPerPage;
   const end = start + resultsPerPage;
+
   return results.value.slice(start, end);
 });
 
 const visiblePages = computed(() => {
   const pages = [];
   const maxVisible = 5;
+
   let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
   let end = Math.min(totalPages.value, start + maxVisible - 1);
 
@@ -228,33 +268,62 @@ const chargerFormations = async () => {
   try {
     const data = await obtenirFormations();
 
-    allResults.value = data.map((formation) => ({
-      ...formation,
-      id: formation.idFormation || formation.id,
-      title: formation.titre || formation.title,
-      category: formation.categorie || formation.category,
-      prix: Number(formation.prixFinal || formation.prixRemise || formation.prix || 0),
-      pertinence: 100,
-    }));
+    console.log("Formations reçues dans VueRecherche =", data);
+
+    allResults.value = data.map((formation) => {
+      const category = formation.category || formation.categorie || "Formation";
+
+      return {
+        ...formation,
+
+        id: formation.idFormation || formation.id,
+
+        title: formation.title || formation.titre || "Formation sans titre",
+        titre: formation.titre || formation.title || "Formation sans titre",
+
+        category,
+        categorie: category,
+        categoryKey: getCategoryKey(category),
+
+        description: formation.description || "",
+
+        ville: formation.ville || formation.lieu || "Antananarivo",
+        lieu: formation.lieu || formation.ville || "Antananarivo",
+
+        duree: formation.duree || "Durée non définie",
+        dateDebut: formation.dateDebut || "À définir",
+
+        prix: Number(
+          formation.prixFinal ||
+            formation.prixRemise ||
+            formation.prix ||
+            0
+        ),
+
+        placesDisponibles: true,
+        pertinence: 100,
+      };
+    });
 
     results.value = [...allResults.value];
     sortResults();
   } catch (error) {
-    console.error("Erreur chargement formations :", error);
+    console.error("Erreur chargement formations backend :", error);
     results.value = [];
+    allResults.value = [];
   } finally {
     loading.value = false;
   }
 };
 
-const performSearch = async () => {
+const performSearch = () => {
   currentPage.value = 1;
   applyLocalFilters();
   sortResults();
 };
 
 const handleApplyFilters = (filters) => {
-  activeFilters.value = filters;
+  activeFilters.value = filters || {};
   currentPage.value = 1;
   applyLocalFilters();
   sortResults();
@@ -273,39 +342,68 @@ const applyLocalFilters = () => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
 
-    filtered = filtered.filter((f) => {
+    filtered = filtered.filter((formation) => {
       return (
-        String(f.title || "").toLowerCase().includes(q) ||
-        String(f.titre || "").toLowerCase().includes(q) ||
-        String(f.description || "").toLowerCase().includes(q) ||
-        String(f.category || "").toLowerCase().includes(q) ||
-        String(f.categorie || "").toLowerCase().includes(q)
+        String(formation.title || "").toLowerCase().includes(q) ||
+        String(formation.titre || "").toLowerCase().includes(q) ||
+        String(formation.description || "").toLowerCase().includes(q) ||
+        String(formation.category || "").toLowerCase().includes(q) ||
+        String(formation.categorie || "").toLowerCase().includes(q) ||
+        String(formation.ville || "").toLowerCase().includes(q)
       );
     });
   }
 
   if (activeFilters.value.categories?.length > 0) {
-    filtered = filtered.filter((f) =>
-      activeFilters.value.categories.includes(
-        String(f.category || f.categorie || "").toLowerCase()
-      )
-    );
+    filtered = filtered.filter((formation) => {
+      return activeFilters.value.categories.includes(formation.categoryKey);
+    });
   }
 
   if (activeFilters.value.ville) {
-    filtered = filtered.filter((f) => f.ville === activeFilters.value.ville);
+    filtered = filtered.filter((formation) => {
+      return formation.ville === activeFilters.value.ville;
+    });
   }
 
   if (activeFilters.value.prixMin) {
-    filtered = filtered.filter((f) => Number(f.prix || 0) >= Number(activeFilters.value.prixMin));
+    filtered = filtered.filter((formation) => {
+      return Number(formation.prix || 0) >= Number(activeFilters.value.prixMin);
+    });
   }
 
   if (activeFilters.value.prixMax) {
-    filtered = filtered.filter((f) => Number(f.prix || 0) <= Number(activeFilters.value.prixMax));
+    filtered = filtered.filter((formation) => {
+      return Number(formation.prix || 0) <= Number(activeFilters.value.prixMax);
+    });
+  }
+
+  if (activeFilters.value.duree) {
+    filtered = filtered.filter((formation) => {
+      const mois = parseInt(formation.duree);
+
+      if (activeFilters.value.duree === "courte") return mois < 1;
+      if (activeFilters.value.duree === "moyenne") return mois >= 1 && mois <= 3;
+      if (activeFilters.value.duree === "longue") return mois > 3;
+
+      return true;
+    });
+  }
+
+  if (activeFilters.value.centre) {
+    filtered = filtered.filter((formation) => {
+      return String(formation.centre || "").includes(String(activeFilters.value.centre));
+    });
+  }
+
+  if (activeFilters.value.dateDebut) {
+    filtered = filtered.filter((formation) => {
+      return String(formation.dateDebut || "").includes(String(activeFilters.value.dateDebut));
+    });
   }
 
   if (activeFilters.value.placesDisponibles) {
-    filtered = filtered.filter((f) => f.placesDisponibles);
+    filtered = filtered.filter((formation) => formation.placesDisponibles);
   }
 
   results.value = filtered;
@@ -322,15 +420,21 @@ const sortResults = () => {
       break;
 
     case "date":
-      results.value.sort((a, b) => String(a.dateDebut || "").localeCompare(String(b.dateDebut || "")));
+      results.value.sort((a, b) =>
+        String(a.dateDebut || "").localeCompare(String(b.dateDebut || ""))
+      );
       break;
 
     case "duree":
-      results.value.sort((a, b) => String(a.duree || "").localeCompare(String(b.duree || "")));
+      results.value.sort((a, b) =>
+        String(a.duree || "").localeCompare(String(b.duree || ""))
+      );
       break;
 
     default:
-      results.value.sort((a, b) => Number(b.pertinence || 0) - Number(a.pertinence || 0));
+      results.value.sort(
+        (a, b) => Number(b.pertinence || 0) - Number(a.pertinence || 0)
+      );
   }
 };
 
