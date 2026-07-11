@@ -354,12 +354,18 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
-import axios from 'axios'
+import {
+  getMesInscriptions,
+  getMesRecus,
+  getMesStats,
+  telechargerRecuApprenant
+} from '../../api/apprenantEspace'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const activeTab = ref('inscriptions')
@@ -372,6 +378,15 @@ const loadingRecus = ref(false)
 const loadingProfile = ref(false)
 
 const errors = ref({})
+
+const stats = ref({
+  totalInscriptions: 0,
+  formationsEnCours: 0,
+  formationsTerminees: 0,
+  certificats: 0,
+  tempsFormation: '0h',
+  totalPaye: 0
+})
 
 const editForm = ref({
   prenom: authStore.user?.prenom || '',
@@ -386,142 +401,241 @@ const recuFilters = ref({
   date: ''
 })
 
-const inscriptions = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    ecole: 'TechAcademy Antananarivo',
-    categorie: 'Informatique',
-    date: '2025-06-15',
-    statut: 'inscrit',
-    paiement_confirme: true,
-    progression: 65,
-    prix: 150000,
-    duree: '3 mois'
-  },
-  {
-    id: 2,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    ecole: 'Business School Tana',
-    categorie: 'Business & Management',
-    date: '2025-07-01',
-    statut: 'reserve',
-    paiement_confirme: false,
-    progression: 12,
-    prix: 80000,
-    duree: '6 semaines'
-  },
-  {
-    id: 3,
-    formation: "Gestion d'Exploitation Agricole",
-    ecole: 'Institut Rural Madagascar',
-    categorie: 'Agriculture',
-    date: '2025-03-10',
-    statut: 'termine',
-    paiement_confirme: true,
-    progression: 100,
-    prix: 120000,
-    duree: '4 mois'
-  }
-])
+const inscriptions = ref([])
+const recus = ref([])
 
-const recus = ref([
-  {
-    id: 1,
-    formation: 'Développement Web Full Stack',
-    date: '2025-06-15',
-    montant: 150000,
-    reference: 'REC-2025-001',
-    methode: 'Mobile Money',
-    statut: 'paye'
-  },
-  {
-    id: 2,
-    formation: "Gestion d'Exploitation Agricole",
-    date: '2025-03-10',
-    montant: 120000,
-    reference: 'REC-2025-002',
-    methode: 'Virement bancaire',
-    statut: 'paye'
-  },
-  {
-    id: 3,
-    formation: 'Marketing Digital & Réseaux Sociaux',
-    date: '2025-07-01',
-    montant: 80000,
-    reference: 'REC-2025-003',
-    methode: 'Mobile Money',
-    statut: 'en_attente'
+const getUtilisateurConnecte = () => {
+  if (authStore.user) {
+    return authStore.user
   }
-])
+
+  const auth = localStorage.getItem('auth')
+  const utilisateur = localStorage.getItem('utilisateur')
+
+  if (auth) {
+    try {
+      const parsed = JSON.parse(auth)
+      if (parsed?.user) return parsed.user
+    } catch (error) {
+      console.error('Erreur lecture auth localStorage', error)
+    }
+  }
+
+  if (utilisateur) {
+    try {
+      return JSON.parse(utilisateur)
+    } catch (error) {
+      console.error('Erreur lecture utilisateur localStorage', error)
+    }
+  }
+
+  return null
+}
+
+const getIdUser = () => {
+  const utilisateur = getUtilisateurConnecte()
+
+  if (utilisateur?.idUser) return Number(utilisateur.idUser)
+  if (utilisateur?.id) return Number(utilisateur.id)
+
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken')
+
+  if (token && token.startsWith('TOKEN-DEMO-')) {
+    const id = Number(token.replace('TOKEN-DEMO-', ''))
+    if (!Number.isNaN(id)) return id
+  }
+
+  return 1
+}
 
 const initials = computed(() => {
   const p = authStore.user?.prenom || ''
   const n = authStore.user?.nom || ''
+
   if (p && n) return (p[0] + n[0]).toUpperCase()
   if (authStore.user?.email) return authStore.user.email[0].toUpperCase()
+
   return 'U'
 })
 
 const displayName = computed(() => {
   const p = authStore.user?.prenom || ''
   const n = authStore.user?.nom || ''
+
   if (p && n) return p + ' ' + n
+
   return authStore.user?.email?.split('@')[0] || 'Utilisateur'
 })
 
 const uniqueFormations = computed(() => {
-  return [...new Set(recus.value.map(r => r.formation))]
+  return [...new Set(recus.value.map((recu) => recu.formation))]
 })
 
 const filteredRecus = computed(() => {
-  return recus.value.filter(recu => {
+  return recus.value.filter((recu) => {
     if (recuFilters.value.formation && recu.formation !== recuFilters.value.formation) {
       return false
     }
-    if (recuFilters.value.date && recu.date !== recuFilters.value.date) {
-      return false
+
+    if (recuFilters.value.date) {
+      const recuDate = toInputDate(recu.date)
+      if (recuDate !== recuFilters.value.date) return false
     }
+
     return true
   })
 })
 
+const toInputDate = (date) => {
+  if (!date) return ''
+
+  const d = new Date(date)
+
+  if (Number.isNaN(d.getTime())) return ''
+
+  return d.toISOString().slice(0, 10)
+}
+
+const normaliserInscription = (item) => {
+  const statutOriginal = String(item.statut || item.statutOriginal || '').toLowerCase()
+
+  let statut = 'inscrit'
+
+  if (statutOriginal.includes('reserve')) {
+    statut = 'reserve'
+  } else if (statutOriginal.includes('termine')) {
+    statut = 'termine'
+  } else if (statutOriginal.includes('annule')) {
+    statut = 'annule'
+  } else if (statutOriginal.includes('attente')) {
+    statut = 'enAttente'
+  }
+
+  return {
+    id: item.idInscription || item.id,
+    idInscription: item.idInscription || item.id,
+    idFormation: item.idFormation,
+    formation: item.formation || item.titre || 'Formation',
+    ecole: item.ecole || item.centre || 'Centre',
+    centre: item.centre || item.ecole || 'Centre',
+    categorie: item.categorie || 'Formation',
+    date: item.date || item.createdAt || item.dateDebut,
+    statut,
+    paiement_confirme: statut !== 'enAttente',
+    progression: Number(item.progression || 0),
+    prix: Number(item.montantPaye || item.montant || item.prix || 0),
+    montant: Number(item.montantPaye || item.montant || item.prix || 0),
+    duree: item.duree || '',
+    numeroRecu: item.numeroRecu,
+    operateur: item.operateur,
+    transactionId: item.transactionId
+  }
+}
+
+const normaliserRecu = (item) => {
+  const statutOriginal = String(item.statut || item.statutOriginal || '').toLowerCase()
+
+  let statut = 'en_attente'
+
+  if (
+    statutOriginal.includes('paye') ||
+    statutOriginal.includes('payé') ||
+    statutOriginal.includes('confirme')
+  ) {
+    statut = 'paye'
+  }
+
+  return {
+    id: item.idPaiement || item.id || item.idInscription,
+    idPaiement: item.idPaiement,
+    idInscription: item.idInscription,
+    formation: item.formation || 'Formation',
+    centre: item.centre || 'Centre',
+    date: item.date || item.datePaiement || item.dateInscription,
+    montant: Number(item.montant || 0),
+    reference: item.reference || item.numeroRecu || `RECU-${item.idInscription}`,
+    numeroRecu: item.numeroRecu,
+    methode: item.methode || 'Mobile Money',
+    operateur: item.operateur || '',
+    statut,
+    numeroTransaction: item.numeroTransaction
+  }
+}
+
 const getStatusClass = (statut) => {
   switch (statut) {
-    case 'inscrit': return 'bg-primary'
-    case 'reserve': return 'bg-warning'
-    case 'termine': return 'bg-success'
-    default: return 'bg-secondary'
+    case 'inscrit':
+      return 'bg-primary'
+    case 'reserve':
+      return 'bg-warning'
+    case 'termine':
+      return 'bg-success'
+    case 'enAttente':
+      return 'bg-warning'
+    case 'annule':
+      return 'bg-danger'
+    default:
+      return 'bg-secondary'
   }
 }
 
 const getStatusLabel = (statut) => {
   switch (statut) {
-    case 'inscrit': return 'Inscrit'
-    case 'reserve': return 'Réservé'
-    case 'termine': return 'Terminé'
-    default: return statut
+    case 'inscrit':
+      return 'Inscrit'
+    case 'reserve':
+      return 'Réservé'
+    case 'termine':
+      return 'Terminé'
+    case 'enAttente':
+      return 'En attente'
+    case 'annule':
+      return 'Annulé'
+    default:
+      return statut
   }
 }
 
 function formatPrice(value) {
-  return new Intl.NumberFormat('fr-FR').format(value)
+  return new Intl.NumberFormat('fr-FR').format(Number(value || 0))
 }
 
 function formatDate(date) {
-  return new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric'
+  if (!date) return '-'
+
+  const d = new Date(date)
+
+  if (Number.isNaN(d.getTime())) return date
+
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
   })
 }
 
 function viewDetails(inscription) {
-  console.log('Voir détails:', inscription.id)
-  // TODO: Navigate to formation details page
+  const idFormation = inscription.idFormation || inscription.id
+
+  if (idFormation) {
+    router.push(`/formations/${idFormation}`)
+  }
 }
 
-function downloadRecu(item) {
-  console.log('Téléchargement du reçu:', item.reference || item.id)
-  // TODO: Implement PDF download
+async function downloadRecu(item) {
+  try {
+    const idInscription = item.idInscription || item.id
+
+    if (!idInscription) {
+      alert('Aucune inscription trouvée pour ce reçu.')
+      return
+    }
+
+    await telechargerRecuApprenant(idInscription)
+  } catch (error) {
+    console.error('Erreur téléchargement reçu :', error)
+    alert('Erreur lors du téléchargement du reçu PDF.')
+  }
 }
 
 function confirmCancel(inscription) {
@@ -532,12 +646,10 @@ function confirmCancel(inscription) {
 
 async function cancelInscription(id) {
   try {
-    // TODO: API call to cancel inscription
-    // await axios.delete(`/api/apprenants/inscriptions/${id}`)
-    console.log('Inscription annulée:', id)
-    inscriptions.value = inscriptions.value.filter(i => i.id !== id)
+    console.log('Annulation inscription non encore connectée :', id)
+    alert("L'annulation n'est pas encore connectée côté backend.")
   } catch (error) {
-    console.error('Erreur lors de l\'annulation:', error)
+    console.error("Erreur lors de l'annulation :", error)
   }
 }
 
@@ -557,9 +669,11 @@ function toggleEdit() {
       password: '',
       confirmPassword: ''
     }
+
     apiError.value = ''
     errors.value = {}
   }
+
   editing.value = !editing.value
 }
 
@@ -582,6 +696,7 @@ async function saveProfile() {
       errors.value.password = 'Le mot de passe doit contenir au moins 6 caractères'
       return
     }
+
     if (editForm.value.password !== editForm.value.confirmPassword) {
       errors.value.confirmPassword = 'Les mots de passe ne correspondent pas'
       return
@@ -589,25 +704,25 @@ async function saveProfile() {
   }
 
   submitting.value = true
-  
+
   try {
-    // TODO: API call to update profile
-    // await axios.put('/api/apprenants/profil', {
-    //   prenom: editForm.value.prenom,
-    //   nom: editForm.value.nom,
-    //   telephone: editForm.value.telephone,
-    //   password: editForm.value.password || undefined
-    // })
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
     if (authStore.user) {
       authStore.user.prenom = editForm.value.prenom
       authStore.user.nom = editForm.value.nom
       authStore.user.telephone = editForm.value.telephone
+
+      localStorage.setItem('utilisateur', JSON.stringify(authStore.user))
+      localStorage.setItem(
+        'auth',
+        JSON.stringify({
+          user: authStore.user,
+          token: authStore.token || localStorage.getItem('token')
+        })
+      )
     }
-    
+
     editing.value = false
     editForm.value.password = ''
     editForm.value.confirmPassword = ''
@@ -620,13 +735,15 @@ async function saveProfile() {
 
 async function loadInscriptions() {
   loadingInscriptions.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/inscriptions')
-    // inscriptions.value = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const idUser = getIdUser()
+    const data = await getMesInscriptions(idUser)
+
+    inscriptions.value = data.map(normaliserInscription)
   } catch (error) {
-    console.error('Erreur lors du chargement des inscriptions:', error)
+    console.error('Erreur lors du chargement des inscriptions :', error)
+    inscriptions.value = []
   } finally {
     loadingInscriptions.value = false
   }
@@ -634,27 +751,53 @@ async function loadInscriptions() {
 
 async function loadRecus() {
   loadingRecus.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/recus')
-    // recus.value = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const idUser = getIdUser()
+    const data = await getMesRecus(idUser)
+
+    recus.value = data.map(normaliserRecu)
   } catch (error) {
-    console.error('Erreur lors du chargement des reçus:', error)
+    console.error('Erreur lors du chargement des reçus :', error)
+    recus.value = []
   } finally {
     loadingRecus.value = false
   }
 }
 
+async function loadStats() {
+  try {
+    const idUser = getIdUser()
+    const data = await getMesStats(idUser)
+
+    stats.value = {
+      totalInscriptions: Number(data.totalInscriptions || 0),
+      formationsEnCours: Number(data.formationsEnCours || 0),
+      formationsTerminees: Number(data.formationsTerminees || 0),
+      certificats: Number(data.certificats || 0),
+      tempsFormation: data.tempsFormation || '0h',
+      totalPaye: Number(data.totalPaye || 0)
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des statistiques :', error)
+  }
+}
+
 async function loadProfile() {
   loadingProfile.value = true
+
   try {
-    // TODO: API call
-    // const response = await axios.get('/api/apprenants/profil')
-    // authStore.user = response.data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const utilisateur = getUtilisateurConnecte()
+
+    if (utilisateur) {
+      editForm.value.prenom = utilisateur.prenom || ''
+      editForm.value.nom = utilisateur.nom || ''
+      editForm.value.telephone = utilisateur.telephone || ''
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
   } catch (error) {
-    console.error('Erreur lors du chargement du profil:', error)
+    console.error('Erreur lors du chargement du profil :', error)
   } finally {
     loadingProfile.value = false
   }
@@ -663,6 +806,7 @@ async function loadProfile() {
 onMounted(() => {
   loadInscriptions()
   loadRecus()
+  loadStats()
   loadProfile()
 })
 </script>
